@@ -1,0 +1,3 @@
+timm
+vit_huge_patch14_224_clip_laion2b
+fc_norm
