@@ -1,6 +1,6 @@
 """ 
 BestFeatSelect.py
-1. PCA reduce input layer features to 100 components
+1. PCA reduce input DNN layer features to 100 components
 2. For each iteration (behavioural dimension, leave item out fold, k features),
 get best features (via RFE, with linear regression as estimator) and assign to 
 output 4D matrix (out_mat) of size:
@@ -10,42 +10,49 @@ output 4D matrix (out_mat) of size:
 #--- Imports
 import time
 import os
-# import math
 import numpy as np
 import pandas as pd
-# import matplotlib.pyplot as plt
 from scipy.io import loadmat
 from sklearn.preprocessing import StandardScaler
 from sklearn.pipeline import Pipeline
-# from sklearn.preprocessing import MinMaxScaler
 from sklearn.decomposition import PCA
 from sklearn.linear_model import LinearRegression
-# from sklearn.metrics import mean_squared_error, r2_score
 from sklearn.feature_selection import RFE
 
 #--- User input
 
+# Dimensions to test
 targ_dims = ["V_DL_1", "V_DL_2", "V_DL_3", "V_DL_4", "V_DL_5",
              "M_DL_1","M_DL_2","M_DL_3","M_DL_4","M_DL_5","M_DL_6",
              "F_DL_1","F_DL_2","F_DL_3","F_DL_4"]
 
-best_feat_sizes = np.concatenate((np.array([1,5]),np.arange(10,51,10))) # number of best_k_features/components
+targ_dims = ["V_DL_1", "V_DL_2", "V_DL_3"]
 
-n_comp = 100 # N PCA components to start with
+# Chosen string for dnn (for output name)
+dnn_output_name = "ViT_CLIP"
 
+# name of features (either "EightyTools" or "ThingsImages")
+feat_name = "EightyTools"
+
+# Paths
 main_path = "/home/jon/GitRepos/OK_CLIP/"
-dnn_feats = (main_path + "Data/EightyTools/features.npy")
+dnn_feats = (main_path + "Data/" + feat_name + "/features.npy")
 dim_data = (main_path + 
                 "Data/BehaviouralDimensions/SelectedDimensions.csv")
 out_path = (main_path + "temp/BestFeatures/")
 
-##
+# number of best_k_features/components to test
+best_feat_sizes = np.concatenate((np.array([1,5]),np.arange(10,51,10))) 
+best_feat_sizes = np.array([1,5]) 
+
+# N PCA components to start with
+n_comp = 100 
 
 #--- Functions
 
 def load_dim_data(dim_data):
     """ Load dimension names and values"""
-    df = pd.read_csv(dim_path) 
+    df = pd.read_csv(dim_data) 
     dim_names = list(df.columns[1:])
     dim_vals = df.iloc[:,1:].to_numpy()    
     return dim_names, dim_vals
@@ -79,9 +86,11 @@ def pca_feats(feats, n_comp, custom_cv, fold):
                      ("PCA", PCA(n_components=n_comp,svd_solver='full'))])
     feats_pca = pipe.fit_transform(feats_pca)
     return feats_pca
-    
 
-# !!! use targ_dims instead of dim_names going forward
+#--- Main
+
+if os.path.exists(out_path) == False:
+    os.mkdir(out_path)
 
 # Load dnn_feats
 feats = np.load(dnn_feats)
@@ -108,49 +117,31 @@ out_heads = targ_dims
 # Get index-value pairs for best_feat_sizes
 out_bk_idx_val = [(i_idx,i) for i_idx, i in enumerate(best_feat_sizes)]
 
+# RFE (for each best_feat_size, targ_dim, fold)
+for best_k_idx, best_k_feats in enumerate(best_feat_sizes): 
+    tic = time.time()
+    for td, td_name in enumerate(targ_dims):
+        for f in np.arange(n_fold):
+            
+            # PCA --> training features
+            train_X = pca_feats(feats, n_comp, custom_cv, f)
+            
+            # Get training targets
+            train_y = np.repeat(dim_vals[:,td],n_exemp)[custom_cv[f][0]]                 
+                                 
+            # Assign RFE feature rankings
+            rfe = RFE(estimator=LinearRegression(), 
+                      n_features_to_select=best_k_feats, 
+                      importance_getter = "coef_")
+            rfe.fit(train_X,train_y)                 
+            out_mat[f,:,best_k_idx, td] = rfe.ranking_ 
+            
+    print("Best %i features run time: %.2f seconds" 
+          % (best_k_feats, time.time()-tic))
 
-# Loop here!
-
-
-
-# Loop
-out_mat = np.zeros((n_fold, n_comp, len(best_feat_sizes), len(targ_dims)))
-out_heads = targ_dims
-out_bk_idx_val = [(i_idx,i) for i_idx, i in enumerate(best_feat_sizes)]
-for cnn_name, layer_name in cnn_layer_names:
-    tic = time.time()        
-    
-    # #--- Load layer features, reshape to 2D
-    # feats = np.load(os.path.join(cnn_layer_path,cnn_name, layer_name,'features.npy'))
-    # if len(feats.shape) > 2:
-    #     feats = feats.reshape(feats.shape[0], np.prod(np.array(feats.shape[1:])))
- 
-    for best_k_idx, best_k_feats in enumerate(best_feat_sizes):  
-
-        #--- PC regression 
-        for td, td_name in enumerate(targ_dims):
-            for f in np.arange(n_fold):
-                
-                # #--- Scale and PCA
-                # feats_pca = np.copy(feats)
-                # feats_pca = feats_pca[custom_cv[f][0],:]
-                # feats_pca = sc.fit_transform(feats_pca)
-                # pca = PCA(n_components=n_comp,svd_solver='full')
-                # feats_pca = pca.fit_transform(feats_pca)
-                
-                # Training data
-                train_X = feats_pca
-                train_y = np.repeat(dim_vals[:,td],n_exemp)[custom_cv[f][0]]                 
-                                     
-                # Assign RFE feature rankings
-                rfe = RFE(estimator=LinearRegression(), 
-                          n_features_to_select=best_k_feats, 
-                          importance_getter = "coef_")
-                rfe.fit(train_X,train_y)                 
-                out_mat[f,:,best_k_idx, td] = rfe.ranking_                       
-               
-    out_name = "RFE_BestFeatures_%s_%s_%dComp_Incremental_C" % (cnn_name, layer_name, n_comp)
-    np.savez(os.path.join(out_path, out_name), out_mat = out_mat, 
-             out_heads = out_heads, out_bk_idx_val = out_bk_idx_val)
-    print("Layer time: %.3f" % (time.time()-tic))
+# Save output
+out_name = "RFE_BestFeatures_%s_%s_%dComp" % (dnn_output_name, 
+                                              feat_name,n_comp)
+np.savez(os.path.join(out_path, out_name), out_mat = out_mat, 
+         out_heads = out_heads, out_bk_idx_val = out_bk_idx_val)
 
