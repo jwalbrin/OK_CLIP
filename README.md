@@ -16,9 +16,9 @@ b. Data/EightyTools/features.npy
 
 ## Scripts
 
-a. BestFeatSelect.py
+a. Scripts/FeatureSelection/BestFeatSelect.py
 - For given set(s) of k features, use PCA + RFE to identify best features/components
 
-b. ModelDims.py
+b. Scripts/Regression/ModelDims.py
 - Cross-validated regression using best features (e.g. best 10 components identified with BestFeatSelect.py) for modelling
 each dimension
