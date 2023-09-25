@@ -1,7 +1,7 @@
 """ 
 BestFeatSelect.py
 1. PCA reduce input DNN layer features to 100 components
-2. For each iteration (behavioural dimension, leave item out fold, k features),
+2. For each iteration (behavioural dimension (y), leave item out fold, k features),
 get best features (via RFE, with linear regression as estimator) and assign to 
 output 4D matrix (out_mat) of size:
     80 folds * 100 components * feature sets * behavioural dimensions
