@@ -26,7 +26,7 @@ b. Scripts/Regression/ModelDims.py
 
 Set-up
 
-``` python
+``` 
 conda create -n ok_clip python=3.11 pip
 conda activate ok_clip
 pip install -r requirements.txt
