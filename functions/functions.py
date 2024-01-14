@@ -1,17 +1,19 @@
-from dataclasses import dataclass
-
-import pickle
 import pandas as pd
-import numpy as np
+import pickle
 import matplotlib.pyplot as plt
-from sklearn.preprocessing import StandardScaler
-from sklearn.pipeline import Pipeline
+import numpy as np
+
+from dataclasses import dataclass
 from sklearn.decomposition import PCA
-from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
+from sklearn.metrics import r2_score
+from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import StandardScaler
 
 
 @dataclass
 class DataObject:
+    """Dataclass object for analysis pipeline"""
+
     dim_names: list  # nested list of dimension names
     model_name: str
     feat_name: str
@@ -22,35 +24,45 @@ class DataObject:
     n_fold: int  # n cv folds
     cv_idx: list  # list containing train/test idx per cv fold
     bkc_mat: np.ndarray  # 4D array of best k components
-    bkc_sizes: np.ndarray  # list of tuples for each index best k component pairs
+    bkc_sizes: np.ndarray  # list of best k component sizes
 
 
-# Save an instance of MyClass
+# Save an instance of data_object
 def save_data_object(obj, filename):
     with open(filename, "wb") as file:
         pickle.dump(obj, file)
 
 
-# Load an instance of MyClass
+# Load an instance of data_object
 def load_data_object(filename):
     with open(filename, "rb") as file:
         return pickle.load(file)
 
 
-def load_dim_data(dim_data):
-    """Load dimension names and values"""
-    df = pd.read_csv(dim_data)
-    dim_names = list(df.columns[1:])
-    dim_vals = df.iloc[:, 1:].to_numpy()
-    return dim_names, dim_vals
+def prep_dim_data(dim_data, targ_dims):
+    def load_dim_data(dim_data):
+        """Load dimension names and values"""
+        df = pd.read_csv(dim_data)
+        dim_names = list(df.columns[1:])
+        dim_vals = df.iloc[:, 1:].to_numpy()
+        return dim_names, dim_vals
 
+    def reorder_dim_data(targ_dims, dim_names, dim_vals):
+        """Reorder dimension names and values based on target dimension
+        ordering"""
+        td_idx = [dim_names.index(i) for i in targ_dims]
+        dim_vals = np.stack(dim_vals[:, td_idx]).astype(
+            None
+        )  # convert to regular array
+        dim_names = [dim_names[i] for i in td_idx]
+        return dim_vals, dim_names
 
-def reorder_dim_data(targ_dims, dim_names, dim_vals):
-    """Reorder dimension names and values based on target dimension
-    ordering"""
-    td_idx = [dim_names.index(i) for i in targ_dims]
-    dim_vals = np.stack(dim_vals[:, td_idx]).astype(None)  # convert to regular array
-    return dim_vals
+    # Load, reorder, scale dimensions
+    dim_names, dim_vals = load_dim_data(dim_data)
+    targ_dims_flat = sum(targ_dims, [])
+    dim_vals, dim_names = reorder_dim_data(targ_dims_flat, dim_names, dim_vals)
+    dim_vals = StandardScaler().fit_transform(dim_vals)
+    return dim_vals, dim_names
 
 
 def custom_cv_split(n_exemp, n_item, n_fold):
@@ -82,7 +94,7 @@ def pca_feats(feats, n_comp, custom_cv, fold):
     return feats_pca
 
 
-def select_repeat_y(dim_col, n_exemp, train_idx, test_idx):
+def repeat_exemplars_y(dim_col, n_exemp, train_idx, test_idx):
     """Get y values for given dimension for specified train
     and test values, repeated by n exemplars"""
     train_y = np.repeat(dim_col, n_exemp)[train_idx]
@@ -90,63 +102,21 @@ def select_repeat_y(dim_col, n_exemp, train_idx, test_idx):
     return train_y, test_y
 
 
-def get_eval_score_function(mod_eval_metric):
+def get_eval_score_func(mod_eval_metric):
     """Get eval_score function and plotting variables for desired metric"""
     if mod_eval_metric == "r2":
 
         def eval_score(test_y, pred_y, _):
             return r2_score(test_y, pred_y)
 
-        y_label = "R2"
-        y_lims = [0, 1]
-    elif mod_eval_metric == "r2adj":
+    elif mod_eval_metric == "adj_r2":
 
         def eval_score(test_y, pred_y, best_k_feats):
             return 1 - (1 - r2_score(test_y, pred_y)) * (len(test_y) - 1) / (
                 len(test_y) - best_k_feats
             )
 
-        y_label = "Adj. R2"
-        y_lims = [-0.2, 1]
-    elif mod_eval_metric == "MSE":
-
-        def eval_score(test_y, pred_y, _):
-            return mean_squared_error(test_y, pred_y)
-
-        y_label = "MSE"
-        y_lims = [0, 1]
-    elif mod_eval_metric == "RMSE":
-
-        def eval_score(test_y, pred_y, _):
-            return np.sqrt(mean_squared_error(test_y, pred_y))
-
-        y_label = "RMSE"
-        y_lims = [0, 1]
-    elif mod_eval_metric == "MAE":
-
-        def eval_score(test_y, pred_y, _):
-            return mean_absolute_error(test_y, pred_y)
-
-        y_label = "MAE"
-        y_lims = [0, 1]
-    return eval_score, y_label, y_lims
-
-
-# def load_bkf_reordered(bkf_full_path, targ_dims):
-#     """Load best k features data:
-#     a. data_mat (where dimension ordering is adjusted
-#             based on that given by targ_dims)
-#     b. Index-value pairs for k feature sets"""
-#     bkf = np.load(bkf_full_path)
-#     bkf_mat = bkf["out_mat"]
-#     bkf_dim_names = list(bkf["out_heads"])
-#     bkf_idx_val = bkf["out_bk_idx_val"]
-
-#     # Re-order dimensions by targ_dims
-#     td_idx = [bkf_dim_names.index(i) for i in targ_dims]
-#     bkf_mat = bkf_mat[:, :, :, td_idx]
-#     bkf_dim_names = np.array(bkf_dim_names)[td_idx]
-#     return bkf_mat, bkf_idx_val
+    return eval_score
 
 
 def tr_te_split(feats, train_idx, test_idx):
@@ -190,3 +160,50 @@ def mod_fit_bars(data_mat, best_k_feats, targ_dims, y_label, y_lims):
         np.mean(data_mat, axis=0),
         yerr=(np.std(data_mat, axis=0, ddof=1) / np.sqrt(data_mat.shape[0])),
     )
+
+
+# def get_bkc_k_idx(n_best_k_feats, best_k_sizes):
+#     """For given k, get corresponding index in
+#     best_k_sizes"""
+#     bkc_idx = int(np.where(best_k_sizes == n_best_k_feats)[0])
+#     return bkc_idx
+def get_bkc_idx(bkc_mat, fold, bks_idx, td_idx):
+    """Get indices of best k components from bkc_mat
+    for a given: fold, k_idx, td_idk"""
+    bkc_idx = np.where(bkc_mat[fold, :, bks_idx, td_idx] == 1)[0]
+    return bkc_idx
+
+
+def mod_fit_lio(pred_mat, dim_vals, best_k_sizes, eval_func):
+    """Model fit exemplar-set-wise predictions with dimension(s)"""
+
+    def get_eval_score_func(eval_func):
+        """Get eval_score function and plotting variables for desired metric"""
+        if eval_func == "r2":
+
+            def eval_score(test_y, pred_y, _):
+                return r2_score(test_y, pred_y)
+
+        elif eval_func == "adj_r2":
+
+            def eval_score(test_y, pred_y, best_k_feats):
+                return 1 - (1 - r2_score(test_y, pred_y)) * (len(test_y) - 1) / (
+                    len(test_y) - best_k_feats
+                )
+
+        return eval_score
+
+    # Get eval score func
+    eval_score = get_eval_score_func(eval_func)
+
+    # Initialize
+    n_exemp, _, n_bks, n_targ_dims = pred_mat.shape
+    mod_fit_mat = np.zeros((n_exemp, n_bks, n_targ_dims))
+
+    for td in np.arange(n_targ_dims):
+        for bks in np.arange(n_bks):
+            for e in np.arange(n_exemp):
+                mod_fit_mat[e, bks, td] = eval_score(
+                    dim_vals[:, td], pred_mat[e, :, bks, td], best_k_sizes[bks]
+                )
+    return mod_fit_mat
