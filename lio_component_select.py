@@ -31,7 +31,7 @@ targ_dims = [
 ]
 
 # Best k features/components to select
-best_feat_sizes = np.array([5, 10])
+best_feat_sizes = np.concatenate((np.array([1, 5]), np.arange(10, 51, 10)))
 
 # Model name
 model_name = "clip-vit"
