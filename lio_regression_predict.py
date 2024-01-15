@@ -18,6 +18,7 @@ from functions.functions import (
     pca_tr_te,
     get_bkc_idx,
     repeat_exemplars_y,
+    mod_fit_lio_perm,
     save_data_object,
 )
 
@@ -29,6 +30,9 @@ data_object_path = os.path.join(main_path, "results", data_object_name)
 dim_data = os.path.join(
     main_path, "data/behavioural_dimensions/", "selected_dimensions.csv"
 )
+
+n_perm = 5000
+mod_fit_metrics = ["adj_r2", "r2"]
 
 # --- Main
 
@@ -81,6 +85,23 @@ for td_idx, td in enumerate(targ_dims_flat):
             pred_mat[:, f, bks_idx, td_idx] = linreg.predict(test_X)
 
     print((f"Predictions for {td} run time: " + f"{time.time()-tic: .02f} seconds"))
+
+
+# Calculate permuted dimension fits
+# Fixes: timing, saving with metric type name
+for met in mod_fit_metrics:
+    tic = time.time()
+    if n_perm > 0:
+        mod_fit_perm_mat = mod_fit_lio_perm(
+            data_object.pred_mat,
+            dim_vals,
+            data_object.bkc_sizes,
+            n_perm,
+            mod_fit_metrics[met],
+        )
+    print(time.time() - tic)
+
+    # Save to data object
 
 
 # Save pred_mat to data_object
