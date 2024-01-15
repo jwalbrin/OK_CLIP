@@ -1,4 +1,3 @@
-# %%
 """lio_incremental_model_fit_vis.py
 For each dimensions, set of best k components, 
 plot model fits as line charts 
@@ -36,9 +35,9 @@ dim_data = os.path.join(
 out_path = os.path.join(main_path, "results/incremental_model_fit/")
 
 mod_fit_metric = "r2"
+mod_fit_metric = "adj_r2"
 
 fig_label = "A)"
-
 
 # --- Main
 
@@ -76,21 +75,22 @@ cm = 1 / 2.54
 fig, ax = plt.subplots(
     nrows=1,
     ncols=len(know_type_subtitles),
-    figsize=(20 * cm, 6 * cm),
+    figsize=(16 * cm, 6 * cm),
     dpi=600,
     sharey=True,
 )
-plt.figtext(0.045, 1, fig_label, fontsize=12)
-
-targ_dims = data_object.dim_names
+fig.set_tight_layout(True)
+plt.figtext(0.03, 0.92, fig_label, fontsize=12)
 
 # Sub-plots
+targ_dims = data_object.dim_names
 for sp in np.arange(len(targ_dims)):
     # Get model fits for current split
     plot_targ_dims = targ_dims[sp]
     plot_td_idx = np.array([targ_dims_flat.index(i) for i in plot_targ_dims])
     plot_mat = mod_fit_mat[:, :, plot_td_idx]
 
+    # Create color maps
     if sp == 0:
         cmap = colormaps["BrBG"]
         cmap_intervals = np.linspace(0.9, 0.6, len(plot_targ_dims))
@@ -108,6 +108,8 @@ for sp in np.arange(len(targ_dims)):
     ax[sp].set_xticks(
         np.arange(1, len(best_k_sizes) + 1), labels=list(np.array(best_k_sizes))
     )
+    ax[sp].set_yticks(np.arange(y_lims[0], y_lims[1] + 0.2, 0.2))
+
     ax[sp].spines["right"].set_visible(False)
     ax[sp].spines["top"].set_visible(False)
     ax[sp].axvline(3, c="grey", linewidth=2, alpha=0.5, linestyle="--")
@@ -142,4 +144,19 @@ for sp in np.arange(len(targ_dims)):
                 color=cmap(cmap_intervals[d_idx]),
                 linewidth=2.5,
             )
-plt.savefig("test_image.png")
+
+        ax[sp].legend(
+            loc="upper right",
+            bbox_to_anchor=(1, 1.1),
+            labelspacing=0.1,
+            fontsize=5,
+            title="Dim.",
+            title_fontsize=5,
+            frameon=False,
+            markerscale=None,
+            markerfirst=False,
+        )
+
+plt.savefig(
+    out_path + f"{data_object.model_name}_{mod_fit_metric}_model_fit_incremental.png"
+)
