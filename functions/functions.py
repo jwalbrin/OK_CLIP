@@ -1,7 +1,8 @@
-import pandas as pd
-import pickle
 import matplotlib.pyplot as plt
 import numpy as np
+import pandas as pd
+import pickle
+import time
 
 from dataclasses import dataclass
 from sklearn.decomposition import PCA
@@ -25,6 +26,9 @@ class DataObject:
     cv_idx: list  # list containing train/test idx per cv fold
     bkc_mat: np.ndarray  # 4D array of best k components
     bkc_sizes: np.ndarray  # list of best k component sizes
+    pred_mat: np.ndarray
+    mod_fit_perm_mat_r2: np.ndarray
+    mod_fit_perm_mat_adj_r2: np.ndarray
 
 
 # Save an instance of data_object
@@ -209,7 +213,7 @@ def mod_fit_lio(pred_mat, dim_vals, best_k_sizes, eval_func):
     return mod_fit_mat
 
 
-def mod_fit_lio_perm(pred_mat, dim_vals, best_k_sizes, n_perm, eval_func):
+def mod_fit_lio_perm(pred_mat, dim_vals, best_k_sizes, targ_dims, n_perm, eval_func):
     """Model fit exemplar-set-wise predictions with n permuted
     dimension(s)"""
 
@@ -247,6 +251,7 @@ def mod_fit_lio_perm(pred_mat, dim_vals, best_k_sizes, n_perm, eval_func):
     n_exemp, _, n_bks, n_targ_dims = pred_mat.shape
     mod_fit_perm_mat = np.zeros((n_exemp, n_bks, n_targ_dims, n_perm + 1))
 
+    tic = time.time()
     for td in np.arange(n_targ_dims):
         for bks in np.arange(n_bks):
             for p in np.arange(n_perm):
@@ -257,5 +262,10 @@ def mod_fit_lio_perm(pred_mat, dim_vals, best_k_sizes, n_perm, eval_func):
                         dim_vals[perm_idx[p, :], td],
                         pred_mat[e, :, bks, td],
                         best_k_sizes[bks],
+                    )
+                if p % int(n_perm / 10) == 0:
+                    print(
+                        f"{targ_dims[td]} {best_k_sizes[bks]} components: {p + 1} permutations done.\n"
+                        + f"Total run time: {time.time()-tic: .02f} seconds"
                     )
     return mod_fit_perm_mat
