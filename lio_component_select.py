@@ -116,6 +116,9 @@ data_object = DataObject(
     cv_idx=cv_idx,
     bkc_mat=bkc_mat,
     bkc_sizes=best_feat_sizes,
+    pred_mat=None,
+    mod_fit_perm_mat_r2=None,
+    mod_fit_perm_mat_adj_r2=None,
 )
 
 out_name = "lio_object_%s_%s.pkl" % (model_name, feat_name)
