@@ -41,7 +41,7 @@ feat_name = "eighty_tools"
 
 # Paths
 main_path = os.path.dirname(os.path.abspath(__file__))
-dnn_feats = os.path.join(main_path, "data", feat_name, "features.npy")
+dnn_feats = os.path.join(main_path, "data", feat_name, model_name, "features.npy")
 out_path = os.path.join(main_path, "results/")
 dim_data = os.path.join(
     main_path, "data/behavioural_dimensions/", "selected_dimensions.csv"
