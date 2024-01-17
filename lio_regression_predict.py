@@ -22,15 +22,13 @@ from functions.functions import (
 
 # --- User input
 data_object_name = "lio_object_clip-vit_eighty_tools.pkl"
+data_object_name = "lio_object_in21k-vit_eighty_tools.pkl"
 
 main_path = os.path.dirname(os.path.abspath(__file__))
 data_object_path = os.path.join(main_path, "results", data_object_name)
 dim_data = os.path.join(
     main_path, "data/behavioural_dimensions/", "selected_dimensions.csv"
 )
-
-n_perm = 5000
-mod_fit_metrics = ["adj_r2", "r2"]
 
 # --- Main
 
