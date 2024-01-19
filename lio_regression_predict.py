@@ -49,7 +49,9 @@ n_comp = data_object.n_comp
 best_k_sizes = data_object.bkc_sizes
 
 # Initialize prediction matrix
-pred_mat = np.zeros((n_exemp, n_fold, len(best_k_sizes), len(targ_dims_flat)))
+pred_mat = np.zeros(
+    (n_exemp, n_fold, len(best_k_sizes), len(targ_dims_flat)), dtype=np.float16
+)
 
 # Main loop (dimension, best_k_components, cv fold)
 for td_idx, td in enumerate(targ_dims_flat):

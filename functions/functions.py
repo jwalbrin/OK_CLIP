@@ -272,7 +272,9 @@ def mod_fit_lio_perm(pred_mat, dim_vals, best_k_sizes, targ_dims, n_perm, eval_f
 
     # Initialize
     n_exemp, _, n_bks, n_targ_dims = pred_mat.shape
-    mod_fit_perm_mat = np.zeros((n_exemp, n_bks, n_targ_dims, n_perm + 1))
+    mod_fit_perm_mat = np.zeros(
+        (n_exemp, n_bks, n_targ_dims, n_perm + 1), dtype=np.float16
+    )
 
     tic = time.time()
     for td in np.arange(n_targ_dims):

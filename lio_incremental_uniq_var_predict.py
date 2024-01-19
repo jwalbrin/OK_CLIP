@@ -83,7 +83,9 @@ for abp_idx, abp in enumerate(data_object_pairs):
 
     # Initialize prediction matrix
     targ_dims_flat = sum(targ_dims, [])
-    pred_mat = np.zeros((n_exemp, n_fold, len(best_k_sizes), len(targ_dims_flat)))
+    pred_mat = np.zeros(
+        (n_exemp, n_fold, len(best_k_sizes), len(targ_dims_flat)), dtype=np.float16
+    )
 
     # Main loop (dimension, best_k_components, cv fold)
     for td_idx, td in enumerate(targ_dims_flat):

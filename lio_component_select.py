@@ -71,7 +71,9 @@ n_fold = n_item
 cv_idx = custom_cv_split(n_exemp, n_item, n_fold)
 
 # Make output matrix and headers
-bkc_mat = np.zeros((n_fold, n_comp, len(best_feat_sizes), len(targ_dims_flat)))
+bkc_mat = np.zeros(
+    (n_fold, n_comp, len(best_feat_sizes), len(targ_dims_flat)), dtype=np.int8
+)
 
 # RFE (for each best_feat_size, targ_dim, fold)
 for best_k_idx, best_k_feats in enumerate(best_feat_sizes):
