@@ -30,6 +30,8 @@ fig_label = "A)"
 
 show_perm = 0
 
+model_name_dict = {"clip-vit": "CLIP-ViT", "in21k-vit": "IN21K-ViT"}
+
 # --- Main
 
 if not os.path.exists(out_path):
@@ -62,7 +64,7 @@ if show_perm == 1:
         fig_label=fig_label,
     )
 
-    incremental_lineplot_with_perm(plot_object)
+    incremental_lineplot_with_perm(plot_object, model_name_dict)
 else:
     # Instantiate PlotObject
     plot_object = PlotObject(
@@ -76,4 +78,4 @@ else:
         fig_label=fig_label,
     )
 
-    incremental_lineplot(plot_object)
+    incremental_lineplot(plot_object, model_name_dict)
