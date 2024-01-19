@@ -55,6 +55,9 @@ class PairObject:
     variables: list[dict]
 
 
+model_dict = {"clip-vit": "CLIP-VIT", "in21k-vit": "IN21K-ViT"}
+
+
 # Save an instance of data_object
 def save_data_object(obj, filename):
     with open(filename, "wb") as file:
@@ -319,7 +322,7 @@ def perm_p_masks(p_vals):
     return p_mask_001, p_mask_05
 
 
-def incremental_lineplot(plot_object):
+def incremental_lineplot(plot_object, model_name_dict):
     """Creates linechart subplots (one per knowledge type)
     where x = best_k_components, y = exemplar-averaged model fits"""
 
@@ -352,12 +355,12 @@ def incremental_lineplot(plot_object):
     fig, ax = plt.subplots(
         nrows=1,
         ncols=len(subtitles),
-        figsize=(18 * cm, 6 * cm),
+        figsize=(18 * cm, 7 * cm),
         dpi=600,
         sharey=True,
     )
-    fig.suptitle("blah", fontsize=14)
-    fig.set_tight_layout(True)
+    fig.suptitle(f"{model_name_dict[model_name]}", fontsize=14)
+    plt.subplots_adjust(top=0.8, bottom=0.2, wspace=0.25, left=0.11, right=0.95)
     plt.figtext(0.028, 0.92, fig_label, fontsize=14)
 
     # Sub-plots
@@ -424,7 +427,7 @@ def incremental_lineplot(plot_object):
 
         ax[sp].legend(
             loc="upper right",
-            bbox_to_anchor=(1.25, 1),
+            bbox_to_anchor=(1.2, 1),
             labelspacing=0.1,
             fontsize=6,
             title="Dim.",
@@ -437,7 +440,134 @@ def incremental_lineplot(plot_object):
     plt.savefig(out_path + f"{model_name}_{mod_fit_metric}_model_fit_incremental.png")
 
 
-def incremental_lineplot_with_perm(plot_object):
+def incremental_lineplot_unique_variance(plot_object, model_name_dict, ab_idx):
+    """Creates linechart subplots (one per knowledge type)
+    where x = best_k_components, y = exemplar-averaged unique
+    variance explained"""
+
+    # Unpack plot_object variables
+    (
+        model_names,
+        targ_dims,
+        mod_fit_metric,
+        mod_fit_mat,
+        _,
+        best_k_sizes,
+        out_path,
+        fig_label,
+    ) = plot_object.__dict__.values()
+
+    # Model a,b names
+    model_first = model_names[ab_idx]
+    model_second = [i for i in model_names if i != model_first][0]
+
+    # Get knowledge type subtitles
+    know_type_dict = {"V": "Vision", "M": "Manipulation", "F": "Function"}
+    subtitles = [know_type_dict[i[0][0]] for i in targ_dims]
+
+    # Y-axis variables
+    y_lims = [-0.2, 1]
+    y_label = "Unique Var."
+
+    # Figure prep
+    cm = 1 / 2.54
+    fig, ax = plt.subplots(
+        nrows=1,
+        ncols=len(subtitles),
+        figsize=(18 * cm, 7 * cm),
+        dpi=600,
+        sharey=True,
+    )
+    # FIX!!!
+    fig.suptitle(
+        f"{model_name_dict[model_first]} > {model_name_dict[model_second]}",
+        fontsize=14,
+    )
+    plt.subplots_adjust(top=0.8, bottom=0.2, wspace=0.25, left=0.11, right=0.95)
+    plt.figtext(0.028, 0.92, fig_label, fontsize=14)
+
+    # Sub-plots
+    targ_dims_flat = sum(targ_dims, [])
+    for sp in np.arange(len(targ_dims)):
+        # Get model fits for current split
+        plot_targ_dims = targ_dims[sp]
+        plot_td_idx = np.array([targ_dims_flat.index(i) for i in plot_targ_dims])
+        plot_mat = mod_fit_mat[:, :, plot_td_idx]
+
+        # Create color maps
+        if sp == 0:
+            cmap = colormaps["BrBG"]
+            cmap_intervals = np.linspace(0.9, 0.6, len(plot_targ_dims))
+        elif sp == 1:
+            cmap = colormaps["PuOr"]
+            cmap_intervals = np.linspace(0.9, 0.6, len(plot_targ_dims))
+        elif sp == 2:
+            cmap = colormaps["YlOrBr"]
+            cmap_intervals = np.linspace(0.6, 0.3, len(plot_targ_dims))
+
+        # Sub-plot set-up
+        title_text = f"{subtitles[sp]}"
+        ax[sp].set_ylim(y_lims)
+        ax[sp].set_title(title_text, fontsize=14)
+        ax[sp].set_xticks(
+            np.arange(1, len(best_k_sizes) + 1), labels=list(np.array(best_k_sizes))
+        )
+        ax[sp].set_yticks(np.arange(y_lims[0], y_lims[1] + 0.1, 0.2))
+        ax[sp].spines["right"].set_visible(False)
+        ax[sp].spines["top"].set_visible(False)
+        ax[sp].axhline(0, c="grey", linewidth=2, alpha=0.5, linestyle="--")
+
+        if sp == 0:
+            ax[sp].set_ylabel(y_label, fontsize=14)
+            ax[sp].set_xlabel("Best K Components", fontsize=14)
+
+        # Plot each dimension
+        for d_idx, d_name in enumerate(plot_targ_dims):
+            if d_idx == 0:
+                ax[sp].errorbar(
+                    np.arange(1, len(best_k_sizes) + 1),
+                    np.mean(plot_mat[:, :, d_idx], axis=0),
+                    yerr=(
+                        np.std(plot_mat[:, :, d_idx], axis=0, ddof=1)
+                        / np.sqrt(plot_mat.shape[0])
+                    ),
+                    label=d_name[-1],
+                    color=cmap(cmap_intervals[d_idx]),
+                    linewidth=4,
+                )
+            else:
+                ax[sp].errorbar(
+                    np.arange(1, len(best_k_sizes) + 1),
+                    np.mean(plot_mat[:, :, d_idx], axis=0),
+                    yerr=(
+                        np.std(plot_mat[:, :, d_idx], axis=0, ddof=1)
+                        / np.sqrt(plot_mat.shape[0])
+                    ),
+                    label=d_name[-1],
+                    color=cmap(cmap_intervals[d_idx]),
+                    linewidth=2.5,
+                )
+
+        ax[sp].legend(
+            loc="upper right",
+            bbox_to_anchor=(1.2, 1),
+            labelspacing=0.1,
+            fontsize=6,
+            title="Dim.",
+            title_fontsize=5,
+            frameon=False,
+            markerscale=None,
+            markerfirst=False,
+        )
+
+    plt.savefig(
+        out_path
+        + f"{model_name_dict[model_first]}_>_{model_name_dict[model_second]}"
+        + "_unique_variance_model_fit_incremental.png"
+    )
+
+
+def incremental_lineplot_with_perm(plot_object, model_name_dict):
     """Creates linechart subplots (one per knowledge type)
     where x = best_k_components, y = exemplar-averaged model fits
     along with permutation significance indication"""
@@ -475,7 +605,8 @@ def incremental_lineplot_with_perm(plot_object):
         dpi=600,
         sharey=True,
     )
-    fig.set_tight_layout(True)
+    fig.suptitle(f"{model_name_dict[model_name]}", fontsize=14)
+    plt.subplots_adjust(top=0.8, bottom=0.2, wspace=0.25, left=0.11, right=0.95)
     plt.figtext(0.028, 0.92, fig_label, fontsize=14)
 
     # Sub-plots
@@ -577,7 +708,7 @@ def incremental_lineplot_with_perm(plot_object):
                 )
         ax[sp].legend(
             loc="upper right",
-            bbox_to_anchor=(1.25, 1),
+            bbox_to_anchor=(1.2, 1),
             labelspacing=0.1,
             fontsize=6,
             title="Dim.",
@@ -669,3 +800,44 @@ def prep_feats_ab(
     test_X = np.concatenate((test_X_a, test_X_b), axis=1)
 
     return train_X, test_X
+
+
+def unpack_ab_variables(pair_object, p_idx):
+    targ_dims = pair_object.variables[p_idx]["targ_dims"]
+    n_comp = pair_object.variables[p_idx]["n_comp"]
+    n_item = pair_object.variables[p_idx]["n_item"]
+    n_exemp = pair_object.variables[p_idx]["n_exemp"]
+    n_fold = pair_object.variables[p_idx]["n_fold"]
+    best_k_sizes = pair_object.variables[p_idx]["best_k_sizes"]
+    return targ_dims, n_comp, n_item, n_exemp, n_fold, best_k_sizes
+
+
+def get_ab_pair_idx(ab_names, pair_object_paths):
+    """
+    Get the index of the first pair in `pair_object_paths` that matches both elements in `ab_names`.
+
+    Parameters:
+        ab_names (List[str]): A list of two strings representing the names of the `a` and `b` elements.
+        pair_object_paths (List[Tuple[str, str]]): A list of tuples, where each tuple contains two strings representing the paths of the `a` and `b` elements.
+
+    Returns:
+        int: The index of the first pair that matches both elements in `ab_names`.
+
+    Raises:
+        ValueError: If no pair in `pair_object_paths` matches both elements in `ab_names`.
+    """
+    orig_object_names = [
+        [i[0].split("/")[-1], i[1].split("/")[-1]] for i in pair_object_paths
+    ]
+    match_count = np.array(
+        [
+            np.sum(np.array([j in k for j in ab_names for k in i]).reshape(2, 2))
+            for i in orig_object_names
+        ]
+    )
+
+    if np.where(match_count == 2)[0].size > 0:
+        p_idx = int(np.where(match_count == 2)[0])
+        return p_idx
+    else:
+        raise ValueError("ab_names are not a valid pair in pair_object")
