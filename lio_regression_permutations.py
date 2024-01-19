@@ -5,6 +5,7 @@ dimension(s). Returns mod_fit_perm_mat of size:
 n exemplar sets * best k sizes * dimensions * ...
 (n permutations + 1 un-permuted test score)
 """
+
 import numpy as np
 import os
 
@@ -17,6 +18,8 @@ from functions.functions import (
 
 # --- User input
 data_object_name = "lio_object_clip-vit_eighty_tools.pkl"
+data_object_name = "lio_object_in21k-vit_eighty_tools.pkl"
+
 
 main_path = os.path.dirname(os.path.abspath(__file__))
 data_object_path = os.path.join(main_path, "results", data_object_name)
@@ -46,7 +49,7 @@ best_k_sizes = data_object.bkc_sizes
 
 # Calculate permuted dimension fits
 for met_idx, met in enumerate(mod_fit_metrics):
-    if n_perm > 0:
+    if n_perm > 0:  # remove this
         mod_fit_perm_mat = mod_fit_lio_perm(
             data_object.pred_mat,
             dim_vals,

@@ -5,6 +5,7 @@ import pickle
 import time
 
 from dataclasses import dataclass
+from matplotlib import colormaps
 from sklearn.decomposition import PCA
 from sklearn.metrics import r2_score
 from sklearn.pipeline import Pipeline
@@ -15,7 +16,7 @@ from sklearn.preprocessing import StandardScaler
 class DataObject:
     """Dataclass object for analysis pipeline"""
 
-    dim_names: list  # nested list of dimension names
+    dim_names: list[list]  # nested list of dimension names
     model_name: str
     feat_name: str
     feat_path: str  # path to input features
@@ -29,6 +30,28 @@ class DataObject:
     pred_mat: np.ndarray
     mod_fit_perm_mat_r2: np.ndarray
     mod_fit_perm_mat_adj_r2: np.ndarray
+
+
+@dataclass
+class PlotObject:
+    """Object for incremenetal best k plots"""
+
+    model_name: str
+    dim_names: list[list]
+    mod_fit_metric: str
+    mod_fit_mat: np.ndarray
+    mod_fit_perm_mat: np.ndarray
+    bkc_sizes: np.ndarray
+    out_path: str
+    fig_label: str
+
+
+@dataclass
+class PairObject:
+    """Paired object data"""
+
+    object_paths: list[tuple]
+    pred_mats: list[np.ndarray]
 
 
 # Save an instance of data_object
@@ -269,3 +292,377 @@ def mod_fit_lio_perm(pred_mat, dim_vals, best_k_sizes, targ_dims, n_perm, eval_f
                         + f"Total run time: {time.time()-tic: .02f} seconds"
                     )
     return mod_fit_perm_mat
+
+
+def perm_p_row(perm_mat_row):
+    """Calculate permutation p per each best_k_component set"""
+    p_val = 1 - ((np.sum(perm_mat_row[0] >= perm_mat_row) - 1) / (len(perm_mat_row)))
+    return p_val
+
+
+def perm_p_row_above_zero(perm_mat_row):
+    """Calculate permutation p per each best_k_component set,
+    set test scores < 0 to p_val = 1"""
+    p_val = 1 - ((np.sum(perm_mat_row[0] >= perm_mat_row) - 1) / (len(perm_mat_row)))
+    if perm_mat_row[0] <= 0:
+        p_val = 1
+    return p_val
+
+
+def perm_p_masks(p_vals):
+    """Mask p-vals that are below threshold"""
+    p_mask_001 = p_vals <= 0.001
+    p_mask_05 = (p_vals <= 0.05) & ~p_mask_001
+    return p_mask_001, p_mask_05
+
+
+def incremental_lineplot(plot_object):
+    """Creates linechart subplots (one per knowledge type)
+    where x = best_k_components, y = exemplar-averaged model fits"""
+
+    # Unpack plot_object variables
+    (
+        model_name,
+        targ_dims,
+        mod_fit_metric,
+        mod_fit_mat,
+        _,
+        best_k_sizes,
+        out_path,
+        fig_label,
+    ) = plot_object.__dict__.values()
+
+    # Get knowledge type subtitles
+    know_type_dict = {"V": "Vision", "M": "Manipulation", "F": "Function"}
+    subtitles = [know_type_dict[i[0][0]] for i in targ_dims]
+
+    # Get y-axis variables
+    if mod_fit_metric == "adj_r2":
+        y_lims = [-0.2, 1]
+        y_label = "Model Fit (adj. $R^2$)"
+    elif mod_fit_metric == "r2":
+        y_lims = [0, 1]
+        y_label = "Model Fit ($R^2$)"
+
+    # Figure prep
+    cm = 1 / 2.54
+    fig, ax = plt.subplots(
+        nrows=1,
+        ncols=len(subtitles),
+        figsize=(18 * cm, 6 * cm),
+        dpi=600,
+        sharey=True,
+    )
+    fig.suptitle("blah", fontsize=14)
+    fig.set_tight_layout(True)
+    plt.figtext(0.028, 0.92, fig_label, fontsize=14)
+
+    # Sub-plots
+    targ_dims_flat = sum(targ_dims, [])
+    for sp in np.arange(len(targ_dims)):
+        # Get model fits for current split
+        plot_targ_dims = targ_dims[sp]
+        plot_td_idx = np.array([targ_dims_flat.index(i) for i in plot_targ_dims])
+        plot_mat = mod_fit_mat[:, :, plot_td_idx]
+
+        # Create color maps
+        if sp == 0:
+            cmap = colormaps["BrBG"]
+            cmap_intervals = np.linspace(0.9, 0.6, len(plot_targ_dims))
+        elif sp == 1:
+            cmap = colormaps["PuOr"]
+            cmap_intervals = np.linspace(0.9, 0.6, len(plot_targ_dims))
+        elif sp == 2:
+            cmap = colormaps["YlOrBr"]
+            cmap_intervals = np.linspace(0.6, 0.3, len(plot_targ_dims))
+
+        # Sub-plot set-up
+        title_text = f"{subtitles[sp]}"
+        ax[sp].set_ylim(y_lims)
+        ax[sp].set_title(title_text, fontsize=14)
+        ax[sp].set_xticks(
+            np.arange(1, len(best_k_sizes) + 1), labels=list(np.array(best_k_sizes))
+        )
+        ax[sp].set_yticks(np.arange(y_lims[0], y_lims[1] + 0.1, 0.2))
+        ax[sp].spines["right"].set_visible(False)
+        ax[sp].spines["top"].set_visible(False)
+        ax[sp].axvline(3, 0, 1, c="grey", linewidth=2, alpha=0.5, linestyle="--")
+
+        if sp == 0:
+            ax[sp].set_ylabel(y_label, fontsize=14)
+            ax[sp].set_xlabel("Best K Components", fontsize=14)
+
+        # Plot each dimension
+        for d_idx, d_name in enumerate(plot_targ_dims):
+            if d_idx == 0:
+                ax[sp].errorbar(
+                    np.arange(1, len(best_k_sizes) + 1),
+                    np.mean(plot_mat[:, :, d_idx], axis=0),
+                    yerr=(
+                        np.std(plot_mat[:, :, d_idx], axis=0, ddof=1)
+                        / np.sqrt(plot_mat.shape[0])
+                    ),
+                    label=d_name[-1],
+                    color=cmap(cmap_intervals[d_idx]),
+                    linewidth=4,
+                )
+            else:
+                ax[sp].errorbar(
+                    np.arange(1, len(best_k_sizes) + 1),
+                    np.mean(plot_mat[:, :, d_idx], axis=0),
+                    yerr=(
+                        np.std(plot_mat[:, :, d_idx], axis=0, ddof=1)
+                        / np.sqrt(plot_mat.shape[0])
+                    ),
+                    label=d_name[-1],
+                    color=cmap(cmap_intervals[d_idx]),
+                    linewidth=2.5,
+                )
+
+        ax[sp].legend(
+            loc="upper right",
+            bbox_to_anchor=(1.25, 1),
+            labelspacing=0.1,
+            fontsize=6,
+            title="Dim.",
+            title_fontsize=5,
+            frameon=False,
+            markerscale=None,
+            markerfirst=False,
+        )
+
+    plt.savefig(out_path + f"{model_name}_{mod_fit_metric}_model_fit_incremental.png")
+
+
+def incremental_lineplot_with_perm(plot_object):
+    """Creates linechart subplots (one per knowledge type)
+    where x = best_k_components, y = exemplar-averaged model fits
+    along with permutation significance indication"""
+
+    # Unpack plot_object variables
+    (
+        model_name,
+        targ_dims,
+        mod_fit_metric,
+        mod_fit_mat,
+        mod_fit_perm_mat,
+        best_k_sizes,
+        out_path,
+        fig_label,
+    ) = plot_object.__dict__.values()
+
+    # Get knowledge type subtitles
+    know_type_dict = {"V": "Vision", "M": "Manipulation", "F": "Function"}
+    subtitles = [know_type_dict[i[0][0]] for i in targ_dims]
+
+    # Get y-axis variables
+    if mod_fit_metric == "adj_r2":
+        y_lims = [-0.2, 1.2]
+        y_label = "Model Fit (adj. $R^2$)"
+    elif mod_fit_metric == "r2":
+        y_lims = [0, 1.2]
+        y_label = "Model Fit ($R^2$)"
+
+    # Figure prep
+    cm = 1 / 2.54
+    fig, ax = plt.subplots(
+        nrows=1,
+        ncols=len(subtitles),
+        figsize=(18 * cm, 7 * cm),
+        dpi=600,
+        sharey=True,
+    )
+    fig.set_tight_layout(True)
+    plt.figtext(0.028, 0.92, fig_label, fontsize=14)
+
+    # Sub-plots
+    targ_dims_flat = sum(targ_dims, [])
+    for sp in np.arange(len(targ_dims)):
+        # Get model fits for current split
+        plot_targ_dims = targ_dims[sp]
+        plot_td_idx = np.array([targ_dims_flat.index(i) for i in plot_targ_dims])
+        plot_mat = mod_fit_mat[:, :, plot_td_idx]
+
+        # Create color maps
+        if sp == 0:
+            cmap = colormaps["BrBG"]
+            cmap_intervals = np.linspace(0.9, 0.6, len(plot_targ_dims))
+        elif sp == 1:
+            cmap = colormaps["PuOr"]
+            cmap_intervals = np.linspace(0.9, 0.6, len(plot_targ_dims))
+        elif sp == 2:
+            cmap = colormaps["YlOrBr"]
+            cmap_intervals = np.linspace(0.6, 0.3, len(plot_targ_dims))
+
+        # Sub-plot set-up
+        title_text = f"{subtitles[sp]}"
+        ax[sp].set_ylim(y_lims)
+        ax[sp].set_title(title_text, fontsize=14)
+        ax[sp].set_xticks(
+            np.arange(1, len(best_k_sizes) + 1), labels=list(np.array(best_k_sizes))
+        )
+        ax[sp].set_yticks(np.arange(y_lims[0], y_lims[1], 0.2))
+        ax[sp].spines["right"].set_visible(False)
+        ax[sp].spines["top"].set_visible(False)
+        ax[sp].axvline(3, 0, 0.59, c="grey", linewidth=2, alpha=0.5, linestyle="--")
+
+        if sp == 0:
+            ax[sp].set_ylabel(y_label, fontsize=14)
+            ax[sp].set_xlabel("Best K Components", fontsize=14)
+
+        # Plot each dimension
+        for d_idx, d_name in enumerate(plot_targ_dims):
+            if d_idx == 0:
+                ax[sp].errorbar(
+                    np.arange(1, len(best_k_sizes) + 1),
+                    np.mean(plot_mat[:, :, d_idx], axis=0),
+                    yerr=(
+                        np.std(plot_mat[:, :, d_idx], axis=0, ddof=1)
+                        / np.sqrt(plot_mat.shape[0])
+                    ),
+                    label=d_name[-1],
+                    color=cmap(cmap_intervals[d_idx]),
+                    linewidth=4,
+                )
+            else:
+                ax[sp].errorbar(
+                    np.arange(1, len(best_k_sizes) + 1),
+                    np.mean(plot_mat[:, :, d_idx], axis=0),
+                    yerr=(
+                        np.std(plot_mat[:, :, d_idx], axis=0, ddof=1)
+                        / np.sqrt(plot_mat.shape[0])
+                    ),
+                    label=d_name[-1],
+                    color=cmap(cmap_intervals[d_idx]),
+                    linewidth=2.5,
+                )
+
+            # Calculate masks for permutation p-values
+            if isinstance(mod_fit_perm_mat, np.ndarray):
+                # Get exemplar-averaged permutation fits
+                perm_mat = np.nanmean(
+                    mod_fit_perm_mat[:, :, plot_td_idx[d_idx], :], axis=0
+                )
+                p_vals = np.apply_along_axis(
+                    perm_p_row_above_zero, axis=1, arr=perm_mat
+                )
+                p_mask_001, p_mask_05 = perm_p_masks(p_vals)
+
+                # Sig p-values as scatter points
+                ax[sp].scatter(
+                    np.where(p_mask_001)[0] + 1,
+                    (np.ones((len(p_mask_001))) * y_lims[1])[p_mask_001]
+                    - (d_idx * 0.07)
+                    - 0.05,
+                    color="black",
+                    marker="o",
+                    s=30,
+                    facecolors=cmap(cmap_intervals[d_idx]),
+                    alpha=1,
+                )
+                ax[sp].scatter(
+                    np.where(p_mask_05)[0] + 1,
+                    # np.mean(plot_mat[:, :, d_idx], axis=0)[p_mask_05],
+                    (np.ones((len(p_mask_05))) * y_lims[1])[p_mask_05]
+                    - (d_idx * 0.07)
+                    - 0.05,
+                    color="black",
+                    marker="o",
+                    s=30,
+                    facecolors=cmap(cmap_intervals[d_idx]),
+                    alpha=0.5,
+                )
+        ax[sp].legend(
+            loc="upper right",
+            bbox_to_anchor=(1.25, 1),
+            labelspacing=0.1,
+            fontsize=6,
+            title="Dim.",
+            title_fontsize=5,
+            frameon=False,
+            markerscale=None,
+            markerfirst=False,
+        )
+
+    plt.savefig(
+        out_path + f"{model_name}_{mod_fit_metric}_model_fit_incremental_perm.png"
+    )
+
+
+def match_ab_get_attrs(data_object_a, data_object_b):
+    """
+    Check if the attributes of two data objects match.
+
+    Args:
+        data_object_a (object): The first data object.
+        data_object_b (object): The second data object.
+
+    Raises:
+        ValueError: If any of the key variables don't match in both `data_object_a` and `data_object_b`.
+    """
+    attrs_a = vars(data_object_a)
+    attrs_b = vars(data_object_b)
+
+    conditions = (
+        attrs_a["dim_names"] != attrs_b["dim_names"],
+        attrs_a["n_comp"] != attrs_b["n_comp"],
+        attrs_a["n_item"] != attrs_b["n_item"],
+        attrs_a["n_exemp"] != attrs_b["n_exemp"],
+        attrs_a["n_fold"] != attrs_b["n_fold"],
+        attrs_a["bkc_sizes"] != attrs_b["bkc_sizes"],
+    )
+
+    if sum(sum(conditions)) > 0:
+        raise ValueError("Key variables don't match in both a and b")
+    else:
+        targ_dims = attrs_a["dim_names"]
+        n_comp = attrs_a["n_comp"]
+        n_item = attrs_a["n_item"]
+        n_exemp = attrs_a["n_exemp"]
+        n_fold = attrs_a["n_fold"]
+        best_k_sizes = attrs_a["bkc_sizes"]
+        return targ_dims, n_comp, n_item, n_exemp, n_fold, best_k_sizes
+
+
+def prep_feats_ab(
+    feats_a, feats_b, cv_idx, bkc_mat_a, bkc_mat_b, fold, bks_idx, td_idx, n_comp
+):
+    """
+    Prepare the features a and b models training and testing.
+
+    Args:
+        bkc_mat_a (numpy.ndarray): The matrix of features for dataset A.
+        bkc_mat_b (numpy.ndarray): The matrix of features for dataset B.
+        fold (int): The fold number for cross-validation.
+        bks_idx (int): The index of the best k components.
+        td_idx (int): The index of the dataset.
+        n_comp (int): The number of components for PCA.
+
+    Returns:
+        tuple: A tuple containing the prepared training and testing features.
+            train_X (numpy.ndarray): The training features.
+            test_X (numpy.ndarray): The testing features.
+    """
+    # Get indices of best k components
+    bkc_idx_a = get_bkc_idx(bkc_mat_a, fold, bks_idx, td_idx)
+    bkc_idx_b = get_bkc_idx(bkc_mat_b, fold, bks_idx, td_idx)
+
+    # Split train and test X
+    train_X_a, test_X_a = tr_te_split(feats_a, cv_idx[fold][0], cv_idx[fold][1])
+    train_X_b, test_X_b = tr_te_split(feats_b, cv_idx[fold][0], cv_idx[fold][1])
+
+    # PCA fit and transform
+    train_X_a, test_X_a = pca_tr_te(train_X_a, test_X_a, n_comp)
+    train_X_b, test_X_b = pca_tr_te(train_X_b, test_X_b, n_comp)
+
+    # Slice best k components
+    train_X_a = train_X_a[:, bkc_idx_a]
+    test_X_a = test_X_a[:, bkc_idx_a]
+    train_X_b = train_X_b[:, bkc_idx_b]
+    test_X_b = test_X_b[:, bkc_idx_b]
+
+    # Combine feats
+    train_X = np.concatenate((train_X_a, train_X_b), axis=1)
+    test_X = np.concatenate((test_X_a, test_X_b), axis=1)
+
+    return train_X, test_X
