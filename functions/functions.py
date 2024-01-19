@@ -52,6 +52,7 @@ class PairObject:
 
     object_paths: list[tuple]
     pred_mats: list[np.ndarray]
+    variables: list[dict]
 
 
 # Save an instance of data_object

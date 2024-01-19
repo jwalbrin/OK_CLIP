@@ -38,6 +38,7 @@ init_object_paths = [() for i in np.arange(len(data_object_pairs))]
 pair_object = PairObject(
     object_paths=init_object_paths,
     pred_mats=[None] * len(data_object_pairs),
+    variables=[None] * len(data_object_pairs),
 )
 
 for abp_idx, abp in enumerate(data_object_pairs):
@@ -63,6 +64,17 @@ for abp_idx, abp in enumerate(data_object_pairs):
     targ_dims, n_comp, n_item, n_exemp, n_fold, best_k_sizes = match_ab_get_attrs(
         data_object_a, data_object_b
     )
+
+    # Assign common variables to dict in pair_object
+    common_variables = {
+        "targ_dims": targ_dims,
+        "n_comp": n_comp,
+        "n_item": n_item,
+        "n_exemp": n_exemp,
+        "n_fold": n_fold,
+        "best_k_sizes": best_k_sizes,
+    }
+    pair_object.variables[abp_idx] = common_variables
 
     # Load features
     feats_a = np.load(data_object_a.feat_path)
