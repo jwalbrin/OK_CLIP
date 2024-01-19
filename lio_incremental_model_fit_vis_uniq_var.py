@@ -15,8 +15,7 @@ from functions.functions import (
     unpack_ab_variables,
     prep_dim_data,
     mod_fit_lio,
-    incremental_lineplot,
-    incremental_lineplot_with_perm,
+    incremental_lineplot_unique_variance,
 )
 
 # --- User input
@@ -35,6 +34,8 @@ out_path = os.path.join(
 mod_fit_metric = "r2"  # "adj_r2"
 
 fig_label = "A)"
+
+model_name_dict = {"clip-vit": "CLIP-VIT", "in21k-vit": "IN21K-ViT"}
 
 # --- Main
 
@@ -88,8 +89,19 @@ plot_object = PlotObject(
     out_path=out_path,
     fig_label=fig_label,
 )
+incremental_lineplot_unique_variance(plot_object, model_name_dict, 0)
 
-# FIX Create function!
-incremental_lineplot_unique_variance(plot_object)
+# Plot unique variance of b
+plot_object = PlotObject(
+    model_name=ab_names,
+    dim_names=targ_dims,
+    mod_fit_metric=mod_fit_metric,
+    mod_fit_mat=uv_mat_b,
+    mod_fit_perm_mat=None,
+    bkc_sizes=best_k_sizes,
+    out_path=out_path,
+    fig_label=fig_label,
+)
+incremental_lineplot_unique_variance(plot_object, model_name_dict, 1)
 
 x = 1
