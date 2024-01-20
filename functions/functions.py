@@ -848,6 +848,31 @@ def load_things_idx(things_idx_path):
     return things_idx
 
 
+def load_proxy_data(extra_proxy_path):
+    proxy_vals = pd.read_csv(extra_proxy_path)
+    proxy_names = list(proxy_vals.columns[1:])
+    proxy_vals = np.array(proxy_vals[["V_DL_1", "M_DL_1", "F_DL_1"]])
+    return proxy_vals, proxy_names
+
+
+def subset_dims_in_proxy(proxy_names, dim_vals, dim_names):
+    """Subset and reorder dim_vals and dim_names to match order of proxies and
+    indices for dimensions in original full set of dimensions"""
+    dim_orig_idx = np.array([dim_names.index(i) for i in proxy_names if i in dim_names])
+    dim_vals = dim_vals[:, dim_orig_idx]
+    dim_names = proxy_names
+    return dim_vals, dim_names, dim_orig_idx
+
+
+def get_cv_idx_tr(n_exemp, n_item_tr):
+    """Get cv indices for eighty tools training data only"""
+    temp_idx = [
+        np.arange(i, i + n_exemp) for i in np.arange(0, n_item_tr * n_exemp, n_exemp)
+    ]
+    cv_idx_tr = [np.setdiff1d(np.arange(n_item_tr * n_exemp), i) for i in temp_idx]
+    return cv_idx_tr
+
+
 def get_cv_idx_orig_things(n_exemp, n_item_te, n_item_tr, things_idx):
     # Accounts for different indices for same items in the 2 feature sets
     te_idx = [
@@ -867,6 +892,27 @@ def orig_things_prep_tr_te_feats(train_feats, test_feats, cv_idx, n_comp, fold):
     feats_te = np.copy(test_feats)
     feats_tr = feats_tr[cv_idx[fold][0], :]
     feats_te = feats_te[cv_idx[fold][1], :]
+
+    # Scale (cross-fit)
+    sc = StandardScaler()
+    feats_tr = sc.fit_transform(feats_tr)
+    feats_te = sc.transform(feats_te)
+
+    # PCA
+    pca = PCA(n_components=n_comp, svd_solver="full")
+    feats_tr = pca.fit_transform(feats_tr)
+    feats_te = pca.transform(feats_te)
+    return feats_tr, feats_te
+
+
+def orig_extra_prep_tr_feats(train_feats, test_feats, cv_idx_tr, n_comp, fold):
+    """Prepare feats for eighty tool snad extra data
+    fold-wise eighty tool samples are used as training,
+    while all extra features are used for testing"""
+    # Subset train feats, get all test feats
+    feats_tr = np.copy(train_feats)
+    feats_te = np.copy(test_feats)
+    feats_tr = feats_tr[cv_idx_tr[fold], :]
 
     # Scale (cross-fit)
     sc = StandardScaler()
