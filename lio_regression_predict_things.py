@@ -14,7 +14,7 @@ from sklearn.linear_model import LinearRegression
 from functions.functions import (
     DataObject,
     load_data_object,
-    load_things_data,
+    load_things_idx,
     prep_dim_data,
     get_cv_idx_orig_things,
     orig_things_prep_tr_te_feats,
@@ -42,11 +42,12 @@ things_idx_path = os.path.join(
 # Load data object
 data_object = load_data_object(data_object_path)
 
-# Load eithy tools features (train)
+# Load eighty tools features (train), things features (test)
 train_feats = np.load(data_object.feat_path)
+test_feats = np.load(things_feat_path)
 
-# Load features and indices for things images data (test)
-test_feats, things_idx = load_things_data(things_feat_path, things_idx_path)
+# Load indices for things data
+things_idx = load_things_idx(things_idx_path)
 
 # Prepare dimensions
 dim_vals, dim_names = prep_dim_data(dim_data, data_object.dim_names)
