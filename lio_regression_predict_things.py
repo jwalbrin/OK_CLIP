@@ -18,8 +18,6 @@ from functions.functions import (
     prep_dim_data,
     get_cv_idx_orig_things,
     orig_things_prep_tr_te_feats,
-    tr_te_split,
-    pca_tr_te,
     get_bkc_idx,
     repeat_exemplars_y,
     save_data_object,
@@ -34,7 +32,6 @@ data_object_path = os.path.join(main_path, "results", data_object_name)
 dim_data = os.path.join(
     main_path, "data/behavioural_dimensions/", "selected_dimensions.csv"
 )
-
 things_feat_path = os.path.join(main_path, "data/things_images/", "features.npy")
 things_idx_path = os.path.join(
     main_path, "data/things_images/", "things_images_idx.csv"
