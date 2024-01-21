@@ -275,7 +275,7 @@ def mod_fit_lio_perm(pred_mat, dim_vals, best_k_sizes, targ_dims, n_perm, eval_f
     eval_score = get_eval_score_func(eval_func)
 
     # Initialize
-    n_exemp, _, n_bks, n_targ_dims = pred_mat.shape
+    n_exemp, n_fold, n_bks, n_targ_dims = pred_mat.shape
     mod_fit_perm_mat = np.zeros(
         (n_exemp, n_bks, n_targ_dims, n_perm + 1), dtype=np.float16
     )
@@ -283,12 +283,78 @@ def mod_fit_lio_perm(pred_mat, dim_vals, best_k_sizes, targ_dims, n_perm, eval_f
     tic = time.time()
     for td in np.arange(n_targ_dims):
         for bks in np.arange(n_bks):
+            # Get permutation indices
+            perm_idx = make_perm_idx(np.arange(dim_vals.shape[0]), n_perm)
             for p in np.arange(n_perm):
-                # Get permutation indices
-                perm_idx = make_perm_idx(np.arange(dim_vals.shape[0]), n_perm)
                 for e in np.arange(n_exemp):
                     mod_fit_perm_mat[e, bks, td, p] = eval_score(
                         dim_vals[perm_idx[p, :], td],
+                        pred_mat[e, :, bks, td],
+                        best_k_sizes[bks],
+                    )
+                if p % int(n_perm / 10) == 0:
+                    print(
+                        f"{targ_dims[td]} {best_k_sizes[bks]} components: {p + 1} permutations done.\n"
+                        + f"Total run time: {time.time()-tic: .02f} seconds"
+                    )
+    return mod_fit_perm_mat
+
+
+def mod_fit_lio_extra_perm(
+    pred_mat, proxy_vals, best_k_sizes, targ_dims, n_perm, eval_func, n_exemp
+):
+    """Model fit exemplar-set-wise predictions with n permuted
+    dimension(s)"""
+
+    def get_eval_score_func(eval_func):
+        """Get eval_score function and plotting variables for desired metric"""
+        if eval_func == "r2":
+
+            def eval_score(test_y, pred_y, _):
+                return r2_score(test_y, pred_y)
+
+        elif eval_func == "adj_r2":
+
+            def eval_score(test_y, pred_y, best_k_feats):
+                return 1 - (1 - r2_score(test_y, pred_y)) * (len(test_y) - 1) / (
+                    len(test_y) - best_k_feats
+                )
+
+        return eval_score
+
+    def make_perm_idx_extra(arr, n_perm, n_exemp):
+        """n_perm + 1 * (proxy_vals * n_exemp) matrix of
+        shuffled indices. Unshuffled indices are first row.
+        Shuffles are stratified (i.e. all 10 consecutive samples
+        (exemplars) receive the same suffled index)"""
+        perm_idx = np.zeros((n_perm + 1, len(arr) * n_exemp))
+        perm_idx[0, :] = np.repeat(arr, n_exemp)
+        for gp_idx in np.arange(1, n_perm + 1):
+            np.random.shuffle(arr)
+            perm_idx[gp_idx, :] = np.repeat(arr, n_exemp)
+        perm_idx = perm_idx.astype("int")
+        return perm_idx
+
+    # Get eval score func
+    eval_score = get_eval_score_func(eval_func)
+
+    # Initialize
+    _, n_fold, n_bks, n_targ_dims = pred_mat.shape
+    mod_fit_perm_mat = np.zeros(
+        (n_exemp, n_bks, n_targ_dims, n_perm + 1), dtype=np.float16
+    )
+
+    tic = time.time()
+    for td in np.arange(n_targ_dims):
+        for bks in np.arange(n_bks):
+            # Get permutation indices
+            perm_idx = make_perm_idx_extra(
+                np.arange(proxy_vals.shape[0]), n_perm, n_exemp
+            )
+            for p in np.arange(n_perm):
+                for e in np.arange(n_exemp):
+                    mod_fit_perm_mat[e, bks, td, p] = eval_score(
+                        proxy_vals[perm_idx[p, :], td],
                         pred_mat[e, :, bks, td],
                         best_k_sizes[bks],
                     )
@@ -1142,7 +1208,7 @@ def best_k_bar_plot_perm(plot_object, model_name_dict, plot_best_k):
                 marker="o",
                 s=30,
                 facecolors=["white"] * len(np.where(p_mask_05)[0]),
-                alpha=0.5,
+                alpha=1,
             )
 
     plt.savefig(
@@ -1367,7 +1433,7 @@ def best_k_bar_plot_things_perm(plot_object, model_name_dict, plot_best_k):
                 marker="o",
                 s=30,
                 facecolors=["white"] * len(np.where(p_mask_05)[0]),
-                alpha=0.5,
+                alpha=1,
             )
 
     plt.savefig(
