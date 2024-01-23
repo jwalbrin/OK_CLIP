@@ -1,4 +1,4 @@
-"""lio_best_k_model_fit_vis_things.py
+"""lio_best_k_model_fit_vis.py
 For each dimension, best k components, 
 plot bars
 """
