@@ -1,6 +1,6 @@
 """lio_best_k_model_fit_vis_things.py
-For each dimensions, set of best k components, 
-plot model fits as line charts 
+For each dimension, best k components, 
+plot bars
 """
 import os
 from functions.functions import (
