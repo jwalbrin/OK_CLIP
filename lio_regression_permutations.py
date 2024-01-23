@@ -49,15 +49,14 @@ best_k_sizes = data_object.bkc_sizes
 
 # Calculate permuted dimension fits
 for met_idx, met in enumerate(mod_fit_metrics):
-    if n_perm > 0:  # remove this
-        mod_fit_perm_mat = mod_fit_lio_perm(
-            data_object.pred_mat,
-            dim_vals,
-            data_object.bkc_sizes,
-            targ_dims_flat,
-            n_perm,
-            mod_fit_metrics[met_idx],
-        )
+    mod_fit_perm_mat = mod_fit_lio_perm(
+        data_object.pred_mat,
+        dim_vals,
+        data_object.bkc_sizes,
+        targ_dims_flat,
+        n_perm,
+        mod_fit_metrics[met_idx],
+    )
 
     # Assign to data_object
     if met == "r2":
