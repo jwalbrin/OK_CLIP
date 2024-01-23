@@ -15,7 +15,6 @@ from functions.functions import (
 
 # --- User input
 data_object_name = "lio_object_clip-vit_eighty_tools.pkl"
-data_object_name = "lio_object_in21k-vit_eighty_tools.pkl"
 
 main_path = os.path.dirname(os.path.abspath(__file__))
 data_object_path = os.path.join(main_path, "results", data_object_name)
