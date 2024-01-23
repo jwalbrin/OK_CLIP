@@ -7,7 +7,7 @@ from functions.functions import (
     load_data_object,
     load_proxy_data,
     mod_fit_lio_extra,
-    # best_k_bar_plot_extra,
+    best_k_bar_plot_extra,
     best_k_bar_plot_extra_perm,
 )
 
@@ -42,10 +42,6 @@ extra_object = load_data_object(extra_object_path)
 
 # Load proxy dimension values (for extra data)
 proxy_vals, proxy_names = load_proxy_data(extra_proxy_path)
-
-# # Prepare dimensions
-# dim_vals, _ = prep_dim_data(dim_data, et_object.dim_names)
-# dim_vals = dim_vals[things_idx, :]
 
 # Calculate model fits
 n_exemp = extra_object.n_exemp
@@ -87,4 +83,4 @@ else:
         fig_label=fig_label,
     )
 
-    # best_k_bar_plot_things(plot_object, model_name_dict, plot_best_k)
+    best_k_bar_plot_extra(plot_object, model_name_dict, plot_best_k)
