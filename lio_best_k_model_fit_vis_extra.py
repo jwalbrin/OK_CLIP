@@ -24,7 +24,7 @@ out_path = os.path.join(main_path, "results/best_k_model_fit_figs/")
 
 mod_fit_metric = "r2"  # "adj_r2"
 
-fig_label = "A)"
+fig_label = "C)"
 
 show_perm = 1
 

@@ -15,6 +15,7 @@ from functions.functions import (
 
 # --- User input
 data_object_name = "lio_object_clip-vit_eighty_tools.pkl"
+data_object_name = "lio_object_in21k-vit_eighty_tools.pkl"
 
 main_path = os.path.dirname(os.path.abspath(__file__))
 data_object_path = os.path.join(main_path, "results", data_object_name)
@@ -28,7 +29,7 @@ mod_fit_metric = "r2"  # "adj_r2"
 
 fig_label = "A)"
 
-show_perm = 0
+show_perm = 1
 
 model_name_dict = {"clip-vit": "CLIP-ViT", "in21k-vit": "IN21K-ViT"}
 

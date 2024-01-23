@@ -33,7 +33,7 @@ out_path = os.path.join(
 
 mod_fit_metric = "r2"  # "adj_r2"
 
-fig_label = "A)"
+fig_labels = ["A)", "B)"]
 
 model_name_dict = {"clip-vit": "CLIP-ViT", "in21k-vit": "IN21K-ViT"}
 
@@ -87,7 +87,7 @@ plot_object = PlotObject(
     mod_fit_perm_mat=None,
     bkc_sizes=best_k_sizes,
     out_path=out_path,
-    fig_label=fig_label,
+    fig_label=fig_labels,
 )
 incremental_lineplot_unique_variance(plot_object, model_name_dict, 0)
 
@@ -100,6 +100,6 @@ plot_object = PlotObject(
     mod_fit_perm_mat=None,
     bkc_sizes=best_k_sizes,
     out_path=out_path,
-    fig_label=fig_label,
+    fig_label=fig_labels,
 )
 incremental_lineplot_unique_variance(plot_object, model_name_dict, 1)

@@ -1,6 +1,6 @@
 """lio_best_k_model_fit_vis_things.py
-For each dimensions, set of best k components, 
-plot model fits as line charts 
+For each dimension, best k components, 
+plot bars
 """
 import os
 from functions.functions import (
@@ -20,9 +20,7 @@ things_object_name = "lio_object_clip-vit_things.pkl"
 main_path = os.path.dirname(os.path.abspath(__file__))
 et_object_path = os.path.join(main_path, "results", et_object_name)
 things_object_path = os.path.join(main_path, "results", things_object_name)
-things_idx_path = os.path.join(
-    main_path, "data/things_images/", "things_images_idx.csv"
-)
+things_idx_path = os.path.join(main_path, "data/things/", "things_images_idx.csv")
 dim_data = os.path.join(
     main_path, "data/behavioural_dimensions/", "selected_dimensions.csv"
 )
@@ -30,9 +28,9 @@ out_path = os.path.join(main_path, "results/best_k_model_fit_figs/")
 
 mod_fit_metric = "r2"  # "adj_r2"
 
-fig_label = "A)"
+fig_label = "B)"
 
-show_perm = 0
+show_perm = 1
 
 plot_best_k = 10
 
