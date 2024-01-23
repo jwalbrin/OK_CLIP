@@ -2,7 +2,7 @@
 lio_regression_permutations_extra.py
 Model fit exemplar-set-wise predictions with n_permuted
 dimension(s). Returns mod_fit_perm_mat of size:
-n fold * best k sizes * dimensions * ...
+n exemp * best k sizes * dimensions * ...
 (n permutations + 1 un-permuted test score)
 """
 
