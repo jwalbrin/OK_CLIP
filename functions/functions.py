@@ -240,6 +240,47 @@ def mod_fit_lio(pred_mat, dim_vals, best_k_sizes, eval_func):
     return mod_fit_mat
 
 
+def mod_fit_lio_extra(pred_mat, dim_vals, best_k_sizes, eval_func, n_exemp):
+    """Model fit fold-wise predictions with dimension(s)"""
+
+    def get_eval_score_func(eval_func):
+        """Get eval_score function and plotting variables for desired metric"""
+        if eval_func == "r2":
+
+            def eval_score(test_y, pred_y, _):
+                return r2_score(test_y, pred_y)
+
+        elif eval_func == "adj_r2":
+
+            def eval_score(test_y, pred_y, best_k_feats):
+                return 1 - (1 - r2_score(test_y, pred_y)) * (len(test_y) - 1) / (
+                    len(test_y) - best_k_feats
+                )
+
+        return eval_score
+
+    # Get eval score func
+    eval_score = get_eval_score_func(eval_func)
+
+    # # Initialize
+    # n_exemp, _, n_bks, n_targ_dims = pred_mat.shape
+    # mod_fit_mat = np.zeros((n_exemp, n_bks, n_targ_dims))
+
+    # Initialize
+    n_fold, _, n_bks, n_targ_dims = pred_mat.shape
+    mod_fit_mat = np.zeros((n_fold, n_bks, n_targ_dims))
+
+    for td in np.arange(n_targ_dims):
+        for bks in np.arange(n_bks):
+            for f in np.arange(n_fold):
+                mod_fit_mat[f, bks, td] = eval_score(
+                    np.repeat(dim_vals[:, td], n_exemp),
+                    pred_mat[f, :, bks, td],
+                    best_k_sizes[bks],
+                )
+    return mod_fit_mat
+
+
 def mod_fit_lio_perm(pred_mat, dim_vals, best_k_sizes, targ_dims, n_perm, eval_func):
     """Model fit exemplar-set-wise predictions with n permuted
     dimension(s)"""
@@ -918,6 +959,7 @@ def load_proxy_data(extra_proxy_path):
     proxy_vals = pd.read_csv(extra_proxy_path)
     proxy_names = list(proxy_vals.columns[1:])
     proxy_vals = np.array(proxy_vals[["V_DL_1", "M_DL_1", "F_DL_1"]])
+    proxy_vals = StandardScaler().fit_transform(proxy_vals)
     return proxy_vals, proxy_names
 
 
@@ -1439,4 +1481,108 @@ def best_k_bar_plot_things_perm(plot_object, model_name_dict, plot_best_k):
     plt.savefig(
         out_path
         + f"{model_name}_{mod_fit_metric}_model_fit_best_{plot_best_k}_components_perm_things.png"
+    )
+
+
+def best_k_bar_plot_extra_perm(plot_object, model_name_dict, plot_best_k):
+    """Plots bar subplots for each dimension for a
+    given best k components"""
+
+    # Unpack plot_object variables
+    (
+        model_name,
+        targ_dims,
+        mod_fit_metric,
+        mod_fit_mat,
+        mod_fit_perm_mat,
+        best_k_sizes,
+        out_path,
+        fig_label,
+    ) = plot_object.__dict__.values()
+
+    # Get index for plot_best_k
+    bk_idx = np.where(best_k_sizes == plot_best_k)[0]
+
+    # Get targ dims, model fits to plot
+    plot_targ_dims = targ_dims
+    plot_mat = mod_fit_mat[:, bk_idx, :]
+
+    # Get y-axis variables
+    if mod_fit_metric == "adj_r2":
+        y_lims = [-0.25, 1]
+        y_label = "Model Fit (adj. $R^2$)"
+    elif mod_fit_metric == "r2":
+        y_lims = [-0.25, 1]
+        y_label = "Model Fit ($R^2$)"
+
+    # Figure prep
+    cm = 1 / 2.54
+    fig, ax = plt.subplots(
+        figsize=(6 * cm, 7 * cm),
+        dpi=600,
+        sharey=True,
+    )
+    fig.suptitle(f"{model_name_dict[model_name]}", fontsize=14)
+    # plt.subplots_adjust(top=0.8, bottom=0.2, wspace=0.25, left=0.12, right=0.95)
+    plt.figtext(0.028, 0.92, fig_label, fontsize=14)
+
+    # Set colors
+    colors = [[1, 101, 93], [83, 38, 135], [240, 120, 24]]
+    colors = [np.array(i) / 255 for i in colors]
+
+    # Plot set-up
+    ax.set_ylim(y_lims)
+    ax.set_xticks(
+        np.arange(1, len(plot_targ_dims) + 1),
+        labels=list(np.arange(1, len(plot_targ_dims) + 1)),
+    )
+    ax.set_yticks(np.arange(y_lims[0], y_lims[1] + 0.1, 0.25))
+    ax.spines["right"].set_visible(False)
+    ax.spines["top"].set_visible(False)
+    ax.axhline(0, c="black", linewidth=1)
+
+    # Plot bars
+    plot_means = np.mean(plot_mat, axis=0)
+    plot_sem = np.std(plot_mat, axis=0, ddof=1) / np.sqrt(plot_mat.shape[0])
+
+    ax.bar(
+        np.arange(1, len(plot_targ_dims) + 1),
+        plot_means[0],
+        yerr=plot_sem[0],
+        color=colors,
+    )
+
+    # # FIX!!!
+    # # Calculate masks for permutation p-values
+    # if isinstance(mod_fit_perm_mat, np.ndarray):
+    #     # Get exemplar-averaged permutation fits
+    #     perm_mat = np.nanmean(mod_fit_perm_mat[:, bk_idx, plot_td_idx, :], axis=0)
+    #     p_vals = np.apply_along_axis(perm_p_row_above_zero, axis=1, arr=perm_mat)
+    #     p_mask_001, p_mask_05 = perm_p_masks(p_vals)
+
+    #     # Sig p-values as scatter points
+    #     ax[sp].scatter(
+    #         np.where(p_mask_001)[0] + 1,
+    #         plot_means[np.where(p_mask_001)[0]]
+    #         + plot_sem[np.where(p_mask_001)[0]]
+    #         + 0.1,
+    #         color="black",
+    #         marker="o",
+    #         s=30,
+    #         facecolors=["black"] * len(np.where(p_mask_001)[0]),
+    #         alpha=1,
+    #     )
+    #     ax[sp].scatter(
+    #         np.where(p_mask_05)[0] + 1,
+    #         plot_means[np.where(p_mask_05)[0]] + plot_sem[np.where(p_mask_05)[0]] + 0.1,
+    #         color="black",
+    #         marker="o",
+    #         s=30,
+    #         facecolors=["white"] * len(np.where(p_mask_05)[0]),
+    #         alpha=1,
+    #     )
+
+    plt.savefig(
+        out_path
+        + f"{model_name}_{mod_fit_metric}_model_fit_best_{plot_best_k}_components_perm_extra.png"
     )
