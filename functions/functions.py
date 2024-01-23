@@ -58,13 +58,11 @@ class PairObject:
 model_dict = {"clip-vit": "CLIP-VIT", "in21k-vit": "IN21K-ViT"}
 
 
-# Save an instance of data_object
 def save_data_object(obj, filename):
     with open(filename, "wb") as file:
         pickle.dump(obj, file)
 
 
-# Load an instance of data_object
 def load_data_object(filename):
     with open(filename, "rb") as file:
         return pickle.load(file)
@@ -193,11 +191,6 @@ def mod_fit_bars(data_mat, best_k_feats, targ_dims, y_label, y_lims):
     )
 
 
-# def get_bkc_k_idx(n_best_k_feats, best_k_sizes):
-#     """For given k, get corresponding index in
-#     best_k_sizes"""
-#     bkc_idx = int(np.where(best_k_sizes == n_best_k_feats)[0])
-#     return bkc_idx
 def get_bkc_idx(bkc_mat, fold, bks_idx, td_idx):
     """Get indices of best k components from bkc_mat
     for a given: fold, k_idx, td_idk"""
