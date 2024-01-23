@@ -240,6 +240,44 @@ def mod_fit_lio(pred_mat, dim_vals, best_k_sizes, eval_func):
     return mod_fit_mat
 
 
+# 200 version
+# def mod_fit_lio_extra(pred_mat, dim_vals, best_k_sizes, eval_func, n_exemp):
+#     """Model fit fold-wise predictions with dimension(s)"""
+
+#     def get_eval_score_func(eval_func):
+#         """Get eval_score function and plotting variables for desired metric"""
+#         if eval_func == "r2":
+
+#             def eval_score(test_y, pred_y, _):
+#                 return r2_score(test_y, pred_y)
+
+#         elif eval_func == "adj_r2":
+
+#             def eval_score(test_y, pred_y, best_k_feats):
+#                 return 1 - (1 - r2_score(test_y, pred_y)) * (len(test_y) - 1) / (
+#                     len(test_y) - best_k_feats
+#                 )
+
+#         return eval_score
+
+#     # Get eval score func
+#     eval_score = get_eval_score_func(eval_func)
+
+#     # Initialize
+#     n_fold, _, n_bks, n_targ_dims = pred_mat.shape
+#     mod_fit_mat = np.zeros((n_fold, n_bks, n_targ_dims))
+
+#     for td in np.arange(n_targ_dims):
+#         for bks in np.arange(n_bks):
+#             for f in np.arange(n_fold):
+#                 mod_fit_mat[f, bks, td] = eval_score(
+#                     np.repeat(dim_vals[:, td], n_exemp),
+#                     pred_mat[f, :, bks, td],
+#                     best_k_sizes[bks],
+#                 )
+#     return mod_fit_mat
+
+
 def mod_fit_lio_extra(pred_mat, dim_vals, best_k_sizes, eval_func, n_exemp):
     """Model fit fold-wise predictions with dimension(s)"""
 
@@ -263,15 +301,22 @@ def mod_fit_lio_extra(pred_mat, dim_vals, best_k_sizes, eval_func, n_exemp):
     eval_score = get_eval_score_func(eval_func)
 
     # Initialize
-    n_fold, _, n_bks, n_targ_dims = pred_mat.shape
-    mod_fit_mat = np.zeros((n_fold, n_bks, n_targ_dims))
+    n_fold, n_preds, n_bks, n_targ_dims = pred_mat.shape
+    n_items = int(n_preds / n_exemp)
+    mod_fit_mat = np.zeros((n_exemp, n_bks, n_targ_dims))
+
+    # Reshape to n_exemp * n_item * n_bks * n_dims
+    pred_mat_f_avg = np.nanmean(pred_mat, axis=0)
+    pred_mat_f_avg = pred_mat_f_avg.reshape(
+        (n_exemp, n_items, n_bks, n_targ_dims), order="F"
+    )
 
     for td in np.arange(n_targ_dims):
         for bks in np.arange(n_bks):
-            for f in np.arange(n_fold):
-                mod_fit_mat[f, bks, td] = eval_score(
-                    np.repeat(dim_vals[:, td], n_exemp),
-                    pred_mat[f, :, bks, td],
+            for e in np.arange(n_exemp):
+                mod_fit_mat[e, bks, td] = eval_score(
+                    dim_vals[:, td],
+                    pred_mat_f_avg[e, :, bks, td],
                     best_k_sizes[bks],
                 )
     return mod_fit_mat
@@ -337,6 +382,73 @@ def mod_fit_lio_perm(pred_mat, dim_vals, best_k_sizes, targ_dims, n_perm, eval_f
     return mod_fit_perm_mat
 
 
+# 200 model fits
+# def mod_fit_lio_extra_perm(
+#     pred_mat, proxy_vals, best_k_sizes, targ_dims, n_perm, eval_func, n_exemp
+# ):
+#     """Model fit exemplar-set-wise predictions with n permuted
+#     dimension(s)"""
+
+#     def get_eval_score_func(eval_func):
+#         """Get eval_score function and plotting variables for desired metric"""
+#         if eval_func == "r2":
+
+#             def eval_score(test_y, pred_y, _):
+#                 return r2_score(test_y, pred_y)
+
+#         elif eval_func == "adj_r2":
+
+#             def eval_score(test_y, pred_y, best_k_feats):
+#                 return 1 - (1 - r2_score(test_y, pred_y)) * (len(test_y) - 1) / (
+#                     len(test_y) - best_k_feats
+#                 )
+
+#         return eval_score
+
+#     def make_perm_idx_extra(arr, n_perm, n_exemp):
+#         """n_perm + 1 * (proxy_vals * n_exemp) matrix of
+#         shuffled indices. Unshuffled indices are first row.
+#         Shuffles are stratified (i.e. all 10 consecutive samples
+#         (exemplars) receive the same suffled index)"""
+#         perm_idx = np.zeros((n_perm + 1, len(arr) * n_exemp))
+#         perm_idx[0, :] = np.repeat(arr, n_exemp)
+#         for gp_idx in np.arange(1, n_perm + 1):
+#             np.random.shuffle(arr)
+#             perm_idx[gp_idx, :] = np.repeat(arr, n_exemp)
+#         perm_idx = perm_idx.astype("int")
+#         return perm_idx
+
+#     # Get eval score func
+#     eval_score = get_eval_score_func(eval_func)
+
+#     # Initialize
+#     _, n_fold, n_bks, n_targ_dims = pred_mat.shape
+#     mod_fit_perm_mat = np.zeros(
+#         (n_exemp, n_bks, n_targ_dims, n_perm + 1), dtype=np.float16
+#     )
+
+#     tic = time.time()
+#     for td in np.arange(n_targ_dims):
+#         for bks in np.arange(n_bks):
+#             # Get permutation indices
+#             perm_idx = make_perm_idx_extra(
+#                 np.arange(proxy_vals.shape[0]), n_perm, n_exemp
+#             )
+#             for p in np.arange(n_perm):
+#                 for e in np.arange(n_exemp):
+#                     mod_fit_perm_mat[e, bks, td, p] = eval_score(
+#                         proxy_vals[perm_idx[p, :], td],
+#                         pred_mat[e, :, bks, td],
+#                         best_k_sizes[bks],
+#                     )
+#                 if p % int(n_perm / 10) == 0:
+#                     print(
+#                         f"{targ_dims[td]} {best_k_sizes[bks]} components: {p + 1} permutations done.\n"
+#                         + f"Total run time: {time.time()-tic: .02f} seconds"
+#                     )
+#     return mod_fit_perm_mat
+
+
 def mod_fit_lio_extra_perm(
     pred_mat, proxy_vals, best_k_sizes, targ_dims, n_perm, eval_func, n_exemp
 ):
@@ -364,11 +476,11 @@ def mod_fit_lio_extra_perm(
         shuffled indices. Unshuffled indices are first row.
         Shuffles are stratified (i.e. all 10 consecutive samples
         (exemplars) receive the same suffled index)"""
-        perm_idx = np.zeros((n_perm + 1, len(arr) * n_exemp))
-        perm_idx[0, :] = np.repeat(arr, n_exemp)
+        perm_idx = np.zeros((n_perm + 1, len(arr)))
+        perm_idx[0, :] = arr
         for gp_idx in np.arange(1, n_perm + 1):
             np.random.shuffle(arr)
-            perm_idx[gp_idx, :] = np.repeat(arr, n_exemp)
+            perm_idx[gp_idx, :] = arr
         perm_idx = perm_idx.astype("int")
         return perm_idx
 
@@ -376,9 +488,16 @@ def mod_fit_lio_extra_perm(
     eval_score = get_eval_score_func(eval_func)
 
     # Initialize
-    _, n_fold, n_bks, n_targ_dims = pred_mat.shape
+    n_fold, n_preds, n_bks, n_targ_dims = pred_mat.shape
+    n_items = int(n_preds / n_exemp)
     mod_fit_perm_mat = np.zeros(
         (n_exemp, n_bks, n_targ_dims, n_perm + 1), dtype=np.float16
+    )
+
+    # Reshape to n_exemp * n_item * n_bks * n_dims
+    pred_mat_f_avg = np.nanmean(pred_mat, axis=0)
+    pred_mat_f_avg = pred_mat_f_avg.reshape(
+        (n_exemp, n_items, n_bks, n_targ_dims), order="F"
     )
 
     tic = time.time()
@@ -392,7 +511,7 @@ def mod_fit_lio_extra_perm(
                 for e in np.arange(n_exemp):
                     mod_fit_perm_mat[e, bks, td, p] = eval_score(
                         proxy_vals[perm_idx[p, :], td],
-                        pred_mat[e, :, bks, td],
+                        pred_mat_f_avg[e, :, bks, td],
                         best_k_sizes[bks],
                     )
                 if p % int(n_perm / 10) == 0:
@@ -566,8 +685,11 @@ def incremental_lineplot_unique_variance(plot_object, model_name_dict, ab_idx):
         _,
         best_k_sizes,
         out_path,
-        fig_label,
+        fig_labels,
     ) = plot_object.__dict__.values()
+
+    # Get fig label
+    fig_label = fig_labels[ab_idx]
 
     # Model a,b names
     model_first = model_names[ab_idx]
@@ -590,7 +712,6 @@ def incremental_lineplot_unique_variance(plot_object, model_name_dict, ab_idx):
         dpi=600,
         sharey=True,
     )
-    # FIX!!!
     fig.suptitle(
         f"{model_name_dict[model_first]} > {model_name_dict[model_second]}",
         fontsize=14,
@@ -1079,7 +1200,7 @@ def best_k_bar_plot(plot_object, model_name_dict, plot_best_k):
         dpi=600,
         sharey=True,
     )
-    fig.suptitle(f"{model_name_dict[model_name]}", fontsize=14)
+    # fig.suptitle(f"{model_name_dict[model_name]}", fontsize=14)
     plt.subplots_adjust(top=0.8, bottom=0.2, wspace=0.25, left=0.12, right=0.95)
     plt.figtext(0.028, 0.92, fig_label, fontsize=14)
 
@@ -1176,7 +1297,7 @@ def best_k_bar_plot_perm(plot_object, model_name_dict, plot_best_k):
         dpi=600,
         sharey=True,
     )
-    fig.suptitle(f"{model_name_dict[model_name]}", fontsize=14)
+    # fig.suptitle(f"{model_name_dict[model_name]}", fontsize=14)
     plt.subplots_adjust(top=0.8, bottom=0.2, wspace=0.25, left=0.12, right=0.95)
     plt.figtext(0.028, 0.92, fig_label, fontsize=14)
 
@@ -1304,7 +1425,7 @@ def best_k_bar_plot_things(plot_object, model_name_dict, plot_best_k):
         dpi=600,
         sharey=True,
     )
-    fig.suptitle(f"{model_name_dict[model_name]}", fontsize=14)
+    # fig.suptitle(f"{model_name_dict[model_name]}", fontsize=14)
     plt.subplots_adjust(top=0.8, bottom=0.2, wspace=0.25, left=0.12, right=0.95)
     plt.figtext(0.028, 0.92, fig_label, fontsize=14)
 
@@ -1401,7 +1522,7 @@ def best_k_bar_plot_things_perm(plot_object, model_name_dict, plot_best_k):
         dpi=600,
         sharey=True,
     )
-    fig.suptitle(f"{model_name_dict[model_name]}", fontsize=14)
+    # fig.suptitle(f"{model_name_dict[model_name]}", fontsize=14)
     plt.subplots_adjust(top=0.8, bottom=0.2, wspace=0.25, left=0.12, right=0.95)
     plt.figtext(0.028, 0.92, fig_label, fontsize=14)
 
