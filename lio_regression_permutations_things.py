@@ -6,7 +6,6 @@ n exemplar sets * best k sizes * dimensions * ...
 (n permutations + 1 un-permuted test score)
 """
 
-import numpy as np
 import os
 
 from functions.functions import (
