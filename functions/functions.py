@@ -10,6 +10,7 @@ from sklearn.decomposition import PCA
 from sklearn.metrics import r2_score
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
+from sklearn.model_selection import StratifiedKFold
 
 
 @dataclass
@@ -92,6 +93,15 @@ def prep_dim_data(dim_data, targ_dims):
     dim_vals, dim_names = reorder_dim_data(targ_dims_flat, dim_names, dim_vals)
     dim_vals = StandardScaler().fit_transform(dim_vals)
     return dim_vals, dim_names
+
+
+def kstrat_cv_split(n_exemp, n_item, n_fold):
+    """Create cross-validation splits, specifying
+    k_folds and given class labels"""
+    class_labels = np.repeat(np.arange(n_item), n_exemp)
+    skf = StratifiedKFold(n_splits=n_fold)
+    cv_idx = list(skf.split(X=np.zeros(len(class_labels)), y=class_labels))
+    return cv_idx
 
 
 def custom_cv_split(n_exemp, n_item, n_fold):
@@ -229,6 +239,43 @@ def mod_fit_lio(pred_mat, dim_vals, best_k_sizes, eval_func):
             for e in np.arange(n_exemp):
                 mod_fit_mat[e, bks, td] = eval_score(
                     dim_vals[:, td], pred_mat[e, :, bks, td], best_k_sizes[bks]
+                )
+    return mod_fit_mat
+
+
+def kstrat_mod_fit_lio(pred_mat, dim_vals, best_k_sizes, eval_func):
+    """Model fit exemplar-set-wise predictions with dimension(s)"""
+
+    def get_eval_score_func(eval_func):
+        """Get eval_score function and plotting variables for desired metric"""
+        if eval_func == "r2":
+
+            def eval_score(test_y, pred_y, _):
+                return r2_score(test_y, pred_y)
+
+        elif eval_func == "adj_r2":
+
+            def eval_score(test_y, pred_y, best_k_feats):
+                return 1 - (1 - r2_score(test_y, pred_y)) * (len(test_y) - 1) / (
+                    len(test_y) - best_k_feats
+                )
+
+        return eval_score
+
+    # Get eval score func
+    eval_score = get_eval_score_func(eval_func)
+
+    # Initialize
+    n_pred, n_fold, n_bks, n_targ_dims = pred_mat.shape
+    mod_fit_mat = np.zeros((n_fold, n_bks, n_targ_dims))
+
+    for td in np.arange(n_targ_dims):
+        for bks in np.arange(n_bks):
+            for f in np.arange(n_fold):
+                mod_fit_mat[f, bks, td] = eval_score(
+                    np.repeat(dim_vals[:, td], int((n_pred / len(dim_vals)))),
+                    pred_mat[:, f, bks, td],
+                    best_k_sizes[bks],
                 )
     return mod_fit_mat
 
@@ -664,6 +711,126 @@ def incremental_lineplot(plot_object, model_name_dict):
     plt.savefig(out_path + f"{model_name}_{mod_fit_metric}_model_fit_incremental.png")
 
 
+def kstrat_incremental_lineplot(plot_object, model_name_dict):
+    """Creates linechart subplots (one per knowledge type)
+    where x = best_k_components, y = exemplar-averaged model fits"""
+
+    # Unpack plot_object variables
+    (
+        model_name,
+        targ_dims,
+        mod_fit_metric,
+        mod_fit_mat,
+        _,
+        best_k_sizes,
+        out_path,
+        fig_label,
+    ) = plot_object.__dict__.values()
+
+    # Get knowledge type subtitles
+    know_type_dict = {"V": "Vision", "M": "Manipulation", "F": "Function"}
+    subtitles = [know_type_dict[i[0][0]] for i in targ_dims]
+
+    # Get y-axis variables
+    if mod_fit_metric == "adj_r2":
+        y_lims = [-0.2, 1]
+        y_label = "Model Fit (adj. $R^2$)"
+    elif mod_fit_metric == "r2":
+        y_lims = [0, 1]
+        y_label = "Model Fit ($R^2$)"
+
+    # Figure prep
+    cm = 1 / 2.54
+    fig, ax = plt.subplots(
+        nrows=1,
+        ncols=len(subtitles),
+        figsize=(18 * cm, 7 * cm),
+        dpi=600,
+        sharey=True,
+    )
+    fig.suptitle(f"{model_name_dict[model_name]}", fontsize=14)
+    plt.subplots_adjust(top=0.8, bottom=0.2, wspace=0.25, left=0.11, right=0.95)
+    plt.figtext(0.028, 0.92, fig_label, fontsize=14)
+
+    # Sub-plots
+    targ_dims_flat = sum(targ_dims, [])
+    for sp in np.arange(len(targ_dims)):
+        # Get model fits for current split
+        plot_targ_dims = targ_dims[sp]
+        plot_td_idx = np.array([targ_dims_flat.index(i) for i in plot_targ_dims])
+        plot_mat = mod_fit_mat[:, :, plot_td_idx]
+
+        # Create color maps
+        if sp == 0:
+            cmap = colormaps["BrBG"]
+            cmap_intervals = np.linspace(0.9, 0.6, len(plot_targ_dims))
+        elif sp == 1:
+            cmap = colormaps["PuOr"]
+            cmap_intervals = np.linspace(0.9, 0.6, len(plot_targ_dims))
+        elif sp == 2:
+            cmap = colormaps["YlOrBr"]
+            cmap_intervals = np.linspace(0.6, 0.3, len(plot_targ_dims))
+
+        # Sub-plot set-up
+        title_text = f"{subtitles[sp]}"
+        ax[sp].set_ylim(y_lims)
+        ax[sp].set_title(title_text, fontsize=14)
+        ax[sp].set_xticks(
+            np.arange(1, len(best_k_sizes) + 1), labels=list(np.array(best_k_sizes))
+        )
+        ax[sp].set_yticks(np.arange(y_lims[0], y_lims[1] + 0.1, 0.2))
+        ax[sp].spines["right"].set_visible(False)
+        ax[sp].spines["top"].set_visible(False)
+        ax[sp].axvline(3, 0, 1, c="grey", linewidth=2, alpha=0.5, linestyle="--")
+
+        if sp == 0:
+            ax[sp].set_ylabel(y_label, fontsize=14)
+            ax[sp].set_xlabel("Best K Components", fontsize=14)
+
+        # Plot each dimension
+        for d_idx, d_name in enumerate(plot_targ_dims):
+            if d_idx == 0:
+                ax[sp].errorbar(
+                    np.arange(1, len(best_k_sizes) + 1),
+                    np.mean(plot_mat[:, :, d_idx], axis=0),
+                    yerr=(
+                        np.std(plot_mat[:, :, d_idx], axis=0, ddof=1)
+                        / np.sqrt(plot_mat.shape[0])
+                    ),
+                    label=d_name[-1],
+                    color=cmap(cmap_intervals[d_idx]),
+                    linewidth=4,
+                )
+            else:
+                ax[sp].errorbar(
+                    np.arange(1, len(best_k_sizes) + 1),
+                    np.mean(plot_mat[:, :, d_idx], axis=0),
+                    yerr=(
+                        np.std(plot_mat[:, :, d_idx], axis=0, ddof=1)
+                        / np.sqrt(plot_mat.shape[0])
+                    ),
+                    label=d_name[-1],
+                    color=cmap(cmap_intervals[d_idx]),
+                    linewidth=2.5,
+                )
+
+        ax[sp].legend(
+            loc="upper right",
+            bbox_to_anchor=(1.2, 1),
+            labelspacing=0.1,
+            fontsize=6,
+            title="Dim.",
+            title_fontsize=5,
+            frameon=False,
+            markerscale=None,
+            markerfirst=False,
+        )
+
+    plt.savefig(
+        out_path + f"{model_name}_{mod_fit_metric}_kstrat_model_fit_incremental.png"
+    )
+
+
 def incremental_lineplot_unique_variance(plot_object, model_name_dict, ab_idx):
     """Creates linechart subplots (one per knowledge type)
     where x = best_k_components, y = exemplar-averaged unique
@@ -790,6 +957,135 @@ def incremental_lineplot_unique_variance(plot_object, model_name_dict, ab_idx):
         out_path
         + f"{model_name_dict[model_first]}_>_{model_name_dict[model_second]}"
         + "_unique_variance_model_fit_incremental.png"
+    )
+
+
+def kstrat_incremental_lineplot_unique_variance(plot_object, model_name_dict, ab_idx):
+    """Creates linechart subplots (one per knowledge type)
+    where x = best_k_components, y = exemplar-averaged unique
+    variance explained"""
+
+    # Unpack plot_object variables
+    (
+        model_names,
+        targ_dims,
+        mod_fit_metric,
+        mod_fit_mat,
+        _,
+        best_k_sizes,
+        out_path,
+        fig_labels,
+    ) = plot_object.__dict__.values()
+
+    # Get fig label
+    fig_label = fig_labels[ab_idx]
+
+    # Model a,b names
+    model_first = model_names[ab_idx]
+    model_second = [i for i in model_names if i != model_first][0]
+
+    # Get knowledge type subtitles
+    know_type_dict = {"V": "Vision", "M": "Manipulation", "F": "Function"}
+    subtitles = [know_type_dict[i[0][0]] for i in targ_dims]
+
+    # Y-axis variables
+    y_lims = [-0.2, 1]
+    y_label = "Unique Var."
+
+    # Figure prep
+    cm = 1 / 2.54
+    fig, ax = plt.subplots(
+        nrows=1,
+        ncols=len(subtitles),
+        figsize=(18 * cm, 7 * cm),
+        dpi=600,
+        sharey=True,
+    )
+    fig.suptitle(
+        f"{model_name_dict[model_first]} > {model_name_dict[model_second]}",
+        fontsize=14,
+    )
+    plt.subplots_adjust(top=0.8, bottom=0.2, wspace=0.25, left=0.11, right=0.95)
+    plt.figtext(0.028, 0.92, fig_label, fontsize=14)
+
+    # Sub-plots
+    targ_dims_flat = sum(targ_dims, [])
+    for sp in np.arange(len(targ_dims)):
+        # Get model fits for current split
+        plot_targ_dims = targ_dims[sp]
+        plot_td_idx = np.array([targ_dims_flat.index(i) for i in plot_targ_dims])
+        plot_mat = mod_fit_mat[:, :, plot_td_idx]
+
+        # Create color maps
+        if sp == 0:
+            cmap = colormaps["BrBG"]
+            cmap_intervals = np.linspace(0.9, 0.6, len(plot_targ_dims))
+        elif sp == 1:
+            cmap = colormaps["PuOr"]
+            cmap_intervals = np.linspace(0.9, 0.6, len(plot_targ_dims))
+        elif sp == 2:
+            cmap = colormaps["YlOrBr"]
+            cmap_intervals = np.linspace(0.6, 0.3, len(plot_targ_dims))
+
+        # Sub-plot set-up
+        title_text = f"{subtitles[sp]}"
+        ax[sp].set_ylim(y_lims)
+        ax[sp].set_title(title_text, fontsize=14)
+        ax[sp].set_xticks(
+            np.arange(1, len(best_k_sizes) + 1), labels=list(np.array(best_k_sizes))
+        )
+        ax[sp].set_yticks(np.arange(y_lims[0], y_lims[1] + 0.1, 0.2))
+        ax[sp].spines["right"].set_visible(False)
+        ax[sp].spines["top"].set_visible(False)
+        ax[sp].axhline(0, c="grey", linewidth=2, alpha=0.5, linestyle="--")
+
+        if sp == 0:
+            ax[sp].set_ylabel(y_label, fontsize=14)
+            ax[sp].set_xlabel("Best K Components", fontsize=14)
+
+        # Plot each dimension
+        for d_idx, d_name in enumerate(plot_targ_dims):
+            if d_idx == 0:
+                ax[sp].errorbar(
+                    np.arange(1, len(best_k_sizes) + 1),
+                    np.mean(plot_mat[:, :, d_idx], axis=0),
+                    yerr=(
+                        np.std(plot_mat[:, :, d_idx], axis=0, ddof=1)
+                        / np.sqrt(plot_mat.shape[0])
+                    ),
+                    label=d_name[-1],
+                    color=cmap(cmap_intervals[d_idx]),
+                    linewidth=4,
+                )
+            else:
+                ax[sp].errorbar(
+                    np.arange(1, len(best_k_sizes) + 1),
+                    np.mean(plot_mat[:, :, d_idx], axis=0),
+                    yerr=(
+                        np.std(plot_mat[:, :, d_idx], axis=0, ddof=1)
+                        / np.sqrt(plot_mat.shape[0])
+                    ),
+                    label=d_name[-1],
+                    color=cmap(cmap_intervals[d_idx]),
+                    linewidth=2.5,
+                )
+
+        ax[sp].legend(
+            loc="upper right",
+            bbox_to_anchor=(1.2, 1),
+            labelspacing=0.1,
+            fontsize=6,
+            title="Dim.",
+            title_fontsize=5,
+            frameon=False,
+            markerscale=None,
+            markerfirst=False,
+        )
+
+    plt.savefig(
+        out_path
+        + f"{model_name_dict[model_first]}_>_{model_name_dict[model_second]}"
+        + "_kstrat_unique_variance_model_fit_incremental.png"
     )
 
 
@@ -945,6 +1241,162 @@ def incremental_lineplot_with_perm(plot_object, model_name_dict):
 
     plt.savefig(
         out_path + f"{model_name}_{mod_fit_metric}_model_fit_incremental_perm.png"
+    )
+
+
+def kstrat_incremental_lineplot_with_perm(plot_object, model_name_dict):
+    """Creates linechart subplots (one per knowledge type)
+    where x = best_k_components, y = exemplar-averaged model fits
+    along with permutation significance indication"""
+
+    # Unpack plot_object variables
+    (
+        model_name,
+        targ_dims,
+        mod_fit_metric,
+        mod_fit_mat,
+        mod_fit_perm_mat,
+        best_k_sizes,
+        out_path,
+        fig_label,
+    ) = plot_object.__dict__.values()
+
+    # Get knowledge type subtitles
+    know_type_dict = {"V": "Vision", "M": "Manipulation", "F": "Function"}
+    subtitles = [know_type_dict[i[0][0]] for i in targ_dims]
+
+    # Get y-axis variables
+    if mod_fit_metric == "adj_r2":
+        y_lims = [-0.2, 1.2]
+        y_label = "Model Fit (adj. $R^2$)"
+    elif mod_fit_metric == "r2":
+        y_lims = [0, 1.2]
+        y_label = "Model Fit ($R^2$)"
+
+    # Figure prep
+    cm = 1 / 2.54
+    fig, ax = plt.subplots(
+        nrows=1,
+        ncols=len(subtitles),
+        figsize=(18 * cm, 7 * cm),
+        dpi=600,
+        sharey=True,
+    )
+    fig.suptitle(f"{model_name_dict[model_name]}", fontsize=14)
+    plt.subplots_adjust(top=0.8, bottom=0.2, wspace=0.25, left=0.11, right=0.95)
+    plt.figtext(0.028, 0.92, fig_label, fontsize=14)
+
+    # Sub-plots
+    targ_dims_flat = sum(targ_dims, [])
+    for sp in np.arange(len(targ_dims)):
+        # Get model fits for current split
+        plot_targ_dims = targ_dims[sp]
+        plot_td_idx = np.array([targ_dims_flat.index(i) for i in plot_targ_dims])
+        plot_mat = mod_fit_mat[:, :, plot_td_idx]
+
+        # Create color maps
+        if sp == 0:
+            cmap = colormaps["BrBG"]
+            cmap_intervals = np.linspace(0.9, 0.6, len(plot_targ_dims))
+        elif sp == 1:
+            cmap = colormaps["PuOr"]
+            cmap_intervals = np.linspace(0.9, 0.6, len(plot_targ_dims))
+        elif sp == 2:
+            cmap = colormaps["YlOrBr"]
+            cmap_intervals = np.linspace(0.6, 0.3, len(plot_targ_dims))
+
+        # Sub-plot set-up
+        title_text = f"{subtitles[sp]}"
+        ax[sp].set_ylim(y_lims)
+        ax[sp].set_title(title_text, fontsize=14)
+        ax[sp].set_xticks(
+            np.arange(1, len(best_k_sizes) + 1), labels=list(np.array(best_k_sizes))
+        )
+        ax[sp].set_yticks(np.arange(y_lims[0], y_lims[1], 0.2))
+        ax[sp].spines["right"].set_visible(False)
+        ax[sp].spines["top"].set_visible(False)
+        ax[sp].axvline(3, 0, 0.59, c="grey", linewidth=2, alpha=0.5, linestyle="--")
+
+        if sp == 0:
+            ax[sp].set_ylabel(y_label, fontsize=14)
+            ax[sp].set_xlabel("Best K Components", fontsize=14)
+
+        # Plot each dimension
+        for d_idx, d_name in enumerate(plot_targ_dims):
+            if d_idx == 0:
+                ax[sp].errorbar(
+                    np.arange(1, len(best_k_sizes) + 1),
+                    np.mean(plot_mat[:, :, d_idx], axis=0),
+                    yerr=(
+                        np.std(plot_mat[:, :, d_idx], axis=0, ddof=1)
+                        / np.sqrt(plot_mat.shape[0])
+                    ),
+                    label=d_name[-1],
+                    color=cmap(cmap_intervals[d_idx]),
+                    linewidth=4,
+                )
+            else:
+                ax[sp].errorbar(
+                    np.arange(1, len(best_k_sizes) + 1),
+                    np.mean(plot_mat[:, :, d_idx], axis=0),
+                    yerr=(
+                        np.std(plot_mat[:, :, d_idx], axis=0, ddof=1)
+                        / np.sqrt(plot_mat.shape[0])
+                    ),
+                    label=d_name[-1],
+                    color=cmap(cmap_intervals[d_idx]),
+                    linewidth=2.5,
+                )
+
+            # Calculate masks for permutation p-values
+            if isinstance(mod_fit_perm_mat, np.ndarray):
+                # Get exemplar-averaged permutation fits
+                perm_mat = np.nanmean(
+                    mod_fit_perm_mat[:, :, plot_td_idx[d_idx], :], axis=0
+                )
+                p_vals = np.apply_along_axis(
+                    perm_p_row_above_zero, axis=1, arr=perm_mat
+                )
+                p_mask_001, p_mask_05 = perm_p_masks(p_vals)
+
+                # Sig p-values as scatter points
+                ax[sp].scatter(
+                    np.where(p_mask_001)[0] + 1,
+                    (np.ones((len(p_mask_001))) * y_lims[1])[p_mask_001]
+                    - (d_idx * 0.07)
+                    - 0.05,
+                    color="black",
+                    marker="o",
+                    s=30,
+                    facecolors=cmap(cmap_intervals[d_idx]),
+                    alpha=1,
+                )
+                ax[sp].scatter(
+                    np.where(p_mask_05)[0] + 1,
+                    (np.ones((len(p_mask_05))) * y_lims[1])[p_mask_05]
+                    - (d_idx * 0.07)
+                    - 0.05,
+                    color="black",
+                    marker="o",
+                    s=30,
+                    facecolors=cmap(cmap_intervals[d_idx]),
+                    alpha=0.5,
+                )
+        ax[sp].legend(
+            loc="upper right",
+            bbox_to_anchor=(1.2, 1),
+            labelspacing=0.1,
+            fontsize=6,
+            title="Dim.",
+            title_fontsize=5,
+            frameon=False,
+            markerscale=None,
+            markerfirst=False,
+        )
+
+    plt.savefig(
+        out_path
+        + f"{model_name}_{mod_fit_metric}_kstrat_model_fit_incremental_perm.png"
     )
 
 
