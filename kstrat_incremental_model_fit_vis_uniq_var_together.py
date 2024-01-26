@@ -15,12 +15,15 @@ from functions.functions import (
     unpack_ab_variables,
     prep_dim_data,
     kstrat_mod_fit_lio,
-    kstrat_incremental_lineplot_unique_variance,
+    kstrat_incremental_lineplot_unique_variance_together,
 )
 
 # --- User input
 pair_object_name = "kstrat_10_ab_predictions.pkl"
 ab_names = ["clip-vit", "in21k-vit"]  # must match order of pair in pair_object
+# ab_names = ["clip-vit", "in1k-resnext101"]  # must match order of pair in pair_object
+# ab_names = ["clip-vit", "in1k-vgg16"]  # must match order of pair in pair_object
+# ab_names = ["clip-vit", "in1k-alexnet"]  # must match order of pair in pair_object
 
 main_path = os.path.dirname(os.path.abspath(__file__))
 pair_object_path = os.path.join(main_path, "results", pair_object_name)
@@ -33,7 +36,7 @@ out_path = os.path.join(
 
 mod_fit_metric = "r2"  # "adj_r2"
 
-fig_labels = ["A)", "B)"]
+fig_label = "A)"
 
 model_name_dict = {
     "clip-vit": "CLIP-ViT",
@@ -87,27 +90,28 @@ uv_mat_a = mod_fit_mat_ab - mod_fit_mat_b
 uv_mat_b = mod_fit_mat_ab - mod_fit_mat_a
 
 # Plot unique variance of a
-plot_object = PlotObject(
+plot_object_a = PlotObject(
     model_name=ab_names,
     dim_names=targ_dims,
-    mod_fit_metric=mod_fit_metric,
+    mod_fit_metric=None,
     mod_fit_mat=uv_mat_a,
     mod_fit_perm_mat=None,
     bkc_sizes=best_k_sizes,
     out_path=out_path,
-    fig_label=fig_labels,
+    fig_label=fig_label,
 )
-kstrat_incremental_lineplot_unique_variance(plot_object, model_name_dict, 0)
 
 # Plot unique variance of b
-plot_object = PlotObject(
-    model_name=ab_names,
-    dim_names=targ_dims,
-    mod_fit_metric=mod_fit_metric,
+plot_object_b = PlotObject(
+    model_name=None,
+    dim_names=None,
+    mod_fit_metric=None,
     mod_fit_mat=uv_mat_b,
     mod_fit_perm_mat=None,
-    bkc_sizes=best_k_sizes,
-    out_path=out_path,
-    fig_label=fig_labels,
+    bkc_sizes=None,
+    out_path=None,
+    fig_label=None,
 )
-kstrat_incremental_lineplot_unique_variance(plot_object, model_name_dict, 1)
+kstrat_incremental_lineplot_unique_variance_together(
+    plot_object_a, plot_object_b, model_name_dict
+)
