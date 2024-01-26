@@ -22,7 +22,6 @@ from functions.functions import (
 
 # --- User input
 data_object_name = "kstrat_5_object_clip-vit_eighty_tools.pkl"
-data_object_name = "kstrat_5_object_in21k-vit_eighty_tools.pkl"
 
 main_path = os.path.dirname(os.path.abspath(__file__))
 data_object_path = os.path.join(main_path, "results", data_object_name)
@@ -36,7 +35,7 @@ dim_data = os.path.join(
 data_object = load_data_object(data_object_path)
 
 # Load features
-feats = np.load(data_object.feat_path)
+feats = np.squeeze(np.load(data_object.feat_path))
 
 # Prepare dimensions
 dim_vals, dim_names = prep_dim_data(dim_data, data_object.dim_names)

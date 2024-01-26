@@ -22,9 +22,21 @@ from functions.functions import (
 # --- User input
 data_object_pairs = [
     (
-        "kstrat_5_object_clip-vit_eighty_tools.pkl",
-        "kstrat_5_object_in21k-vit_eighty_tools.pkl",
-    )
+        "kstrat_10_object_clip-vit_eighty_tools.pkl",
+        "kstrat_10_object_in21k-vit_eighty_tools.pkl",
+    ),
+    (
+        "kstrat_10_object_clip-vit_eighty_tools.pkl",
+        "kstrat_10_object_in1k-resnext101_eighty_tools.pkl",
+    ),
+    (
+        "kstrat_10_object_clip-vit_eighty_tools.pkl",
+        "kstrat_10_object_in1k-vgg16_eighty_tools.pkl",
+    ),
+    (
+        "kstrat_10_object_clip-vit_eighty_tools.pkl",
+        "kstrat_10_object_in1k-alexnet_eighty_tools.pkl",
+    ),
 ]
 
 main_path = os.path.dirname(os.path.abspath(__file__))
@@ -80,8 +92,8 @@ for abp_idx, abp in enumerate(data_object_pairs):
     pair_object.variables[abp_idx] = common_variables
 
     # Load features
-    feats_a = np.load(data_object_a.feat_path)
-    feats_b = np.load(data_object_b.feat_path)
+    feats_a = np.squeeze(np.load(data_object_a.feat_path))
+    feats_b = np.squeeze(np.load(data_object_b.feat_path))
 
     # Best k components matrices
     bkc_mat_a = data_object_a.bkc_mat
