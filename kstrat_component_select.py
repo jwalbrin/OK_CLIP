@@ -1,9 +1,9 @@
 """ 
-lio_component_select.py
+kstrat_component_select.py
 For an input DNN layer apply cross-validated RFE
-For each iteration (behavioural dimension (y), leave-one-item-out (lio) fold, k components),
+For each iteration (behavioural dimension (y), k-stratified fold, k components),
 get best components (scale, PCA, RFE to training data only) and assign to 
-4D matrix (bkc_mat): lio folds * components * best k component sets * behavioural dimensions
+4D matrix (bkc_mat): kstrat folds * components * best k component sets * behavioural dimensions
 """
 import numpy as np
 import os
@@ -11,7 +11,6 @@ import time
 
 from sklearn.linear_model import LinearRegression
 from sklearn.feature_selection import RFE
-
 
 from functions.functions import (
     DataObject,
@@ -36,14 +35,12 @@ best_feat_sizes = np.concatenate((np.array([1, 5]), np.arange(10, 51, 10)))
 
 # Model name
 model_name = "clip-vit"
-model_name = "in21k-vit"
 
-
-# Features ("eighty_tools","things_images")
+# Features ("eighty_tools","things", "extra")
 feat_name = "eighty_tools"
 
 # k strat folds
-k_fold = 5
+k_fold = 10
 
 # Paths
 main_path = os.path.dirname(os.path.abspath(__file__))
@@ -68,12 +65,13 @@ dim_vals, dim_names = prep_dim_data(dim_data, targ_dims)
 targ_dims_flat = sum(targ_dims, [])
 
 # Load dnn_feats, dim_data
-feats = np.load(dnn_feats)
+feats = np.squeeze(np.load(dnn_feats))
 
 # Get cross-validation splits
 n_item = len(dim_vals)
 n_exemp = int(len(feats) / n_item)
 n_fold = k_fold
+
 # k strat cv
 cv_idx = kstrat_cv_split(n_exemp, n_item, n_fold)
 
