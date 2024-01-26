@@ -1,4 +1,4 @@
-"""lio_incremental_model_fit_vis_uniq_var.py
+"""kstrat_incremental_model_fit_vis_uniq_var.py
 Load ab_predictions along with each respective
 a,b prediction and calculte the unique variance
 explained by each a and b
@@ -19,8 +19,9 @@ from functions.functions import (
 )
 
 # --- User input
-pair_object_name = "kstrat_ab_predictions.pkl"
+pair_object_name = "kstrat_10_ab_predictions.pkl"
 ab_names = ["clip-vit", "in21k-vit"]  # must match order of pair in pair_object
+
 
 main_path = os.path.dirname(os.path.abspath(__file__))
 pair_object_path = os.path.join(main_path, "results", pair_object_name)
@@ -35,7 +36,15 @@ mod_fit_metric = "r2"  # "adj_r2"
 
 fig_labels = ["A)", "B)"]
 
-model_name_dict = {"clip-vit": "CLIP-ViT", "in21k-vit": "IN21K-ViT"}
+model_name_dict = {
+    "clip-vit": "CLIP-ViT",
+    "in21k-vit": "IN-ViT",
+    "in1k-resnext101": "IN-ResNeXt101",
+    "in1k-vgg16": "IN-VGG16",
+    "in1k-alexnet": "IN-AlexNet",
+    "ecoset-vgg16": "EcoSet-VGG16",
+    "ecoset-alexnet": "EcoSet-AlexNet",
+}
 
 # --- Main
 

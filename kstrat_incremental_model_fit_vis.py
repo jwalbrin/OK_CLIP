@@ -1,4 +1,4 @@
-"""lio_incremental_model_fit_vis.py
+"""kstrat_incremental_model_fit_vis.py
 For each dimensions, set of best k components, 
 plot model fits as line charts 
 """
@@ -14,8 +14,7 @@ from functions.functions import (
 )
 
 # --- User input
-data_object_name = "kstrat_5_object_clip-vit_eighty_tools.pkl"
-data_object_name = "kstrat_5_object_in21k-vit_eighty_tools.pkl"
+data_object_name = "kstrat_10_object_clip-vit_eighty_tools.pkl"
 
 main_path = os.path.dirname(os.path.abspath(__file__))
 data_object_path = os.path.join(main_path, "results", data_object_name)
@@ -31,8 +30,15 @@ fig_label = "A)"
 
 show_perm = 1
 
-model_name_dict = {"clip-vit": "CLIP-ViT", "in21k-vit": "IN21K-ViT"}
-
+model_name_dict = {
+    "clip-vit": "CLIP-ViT",
+    "in21k-vit": "IN-ViT",
+    "in1k-resnext101": "IN-ResNeXt101",
+    "in1k-vgg16": "IN-VGG16",
+    "in1k-alexnet": "IN-AlexNet",
+    "ecoset-vgg16": "EcoSet-VGG16",
+    "ecoset-alexnet": "EcoSet-AlexNet",
+}
 # --- Main
 
 if not os.path.exists(out_path):
