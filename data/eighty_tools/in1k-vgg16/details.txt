@@ -1,0 +1,3 @@
+torchvision
+vgg16
+classifier.4
