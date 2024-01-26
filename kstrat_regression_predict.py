@@ -1,9 +1,9 @@
 """ 
-lio_regression_predict.py
-Generate CV leave-one-item-out (lio) predictions
+kstrat_regression_predict.py
+Generate k-stratified CV predictions
 and assign as a matrix (pred_mat) to input data_object
-pred_mat.shape: n_exemp * n_fold * best_k_sizes * targ_dims
-(e.g. 10 * 80 * 7 * 15)
+pred_mat.shape: 80 item * n_fold * best_k_sizes * targ_dims
+(e.g. 80 * 10 * 7 * 15)
 """
 import numpy as np
 import os
