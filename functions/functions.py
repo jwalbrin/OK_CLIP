@@ -280,6 +280,45 @@ def kstrat_mod_fit_lio(pred_mat, dim_vals, best_k_sizes, eval_func):
     return mod_fit_mat
 
 
+def kstrat_mod_fit_lio_things(pred_mat, dim_vals, best_k_sizes, eval_func):
+    """Model fit exemplar-set-wise predictions with dimension(s)"""
+
+    def get_eval_score_func(eval_func):
+        """Get eval_score function and plotting variables for desired metric"""
+        if eval_func == "r2":
+
+            def eval_score(test_y, pred_y, _):
+                return r2_score(test_y, pred_y)
+
+        elif eval_func == "adj_r2":
+
+            def eval_score(test_y, pred_y, best_k_feats):
+                return 1 - (1 - r2_score(test_y, pred_y)) * (len(test_y) - 1) / (
+                    len(test_y) - best_k_feats
+                )
+
+        return eval_score
+
+    # Get eval score func
+    eval_score = get_eval_score_func(eval_func)
+
+    # Initialize
+    n_fold_tr, n_fold_te, n_pred, n_bks, n_targ_dims = pred_mat.shape
+    mod_fit_mat = np.zeros((n_fold_tr, n_fold_te, n_bks, n_targ_dims))
+
+    for td in np.arange(n_targ_dims):
+        for bks in np.arange(n_bks):
+            for tr_f in np.arange(n_fold_tr):
+                for te_f in np.arange(n_fold_te):
+                    mod_fit_mat[tr_f, te_f, bks, td] = eval_score(
+                        dim_vals[:, td],
+                        pred_mat[tr_f, te_f, :, bks, td],
+                        best_k_sizes[bks],
+                    )
+    mod_fit_mat = np.nanmean(mod_fit_mat, axis=1)
+    return mod_fit_mat
+
+
 # 200 version
 # def mod_fit_lio_extra(pred_mat, dim_vals, best_k_sizes, eval_func, n_exemp):
 #     """Model fit fold-wise predictions with dimension(s)"""
@@ -989,7 +1028,7 @@ def kstrat_incremental_lineplot_unique_variance(plot_object, model_name_dict, ab
     subtitles = [know_type_dict[i[0][0]] for i in targ_dims]
 
     # Y-axis variables
-    y_lims = [-0.2, 1]
+    y_lims = [-0.1, 0.5]
     y_label = "Unique Var."
 
     # Figure prep
@@ -1034,7 +1073,7 @@ def kstrat_incremental_lineplot_unique_variance(plot_object, model_name_dict, ab
         ax[sp].set_xticks(
             np.arange(1, len(best_k_sizes) + 1), labels=list(np.array(best_k_sizes))
         )
-        ax[sp].set_yticks(np.arange(y_lims[0], y_lims[1] + 0.1, 0.2))
+        ax[sp].set_yticks(np.arange(y_lims[0], y_lims[1] + 0.1, 0.1))
         ax[sp].spines["right"].set_visible(False)
         ax[sp].spines["top"].set_visible(False)
         ax[sp].axhline(0, c="grey", linewidth=2, alpha=0.5, linestyle="--")
@@ -1552,6 +1591,14 @@ def get_cv_idx_tr(n_exemp, n_item_tr):
     return cv_idx_tr
 
 
+def get_cv_idx_things_te(n_exemp, n_item_te):
+    """Get cv indices for things testing data only"""
+    cv_idx_te = [
+        np.arange(i, n_exemp * n_item_te, n_exemp) for i in np.arange(0, n_exemp)
+    ]
+    return cv_idx_te
+
+
 def get_cv_idx_orig_things(n_exemp, n_item_te, n_item_tr, things_idx):
     # Accounts for different indices for same items in the 2 feature sets
     te_idx = [
@@ -1571,6 +1618,27 @@ def orig_things_prep_tr_te_feats(train_feats, test_feats, cv_idx, n_comp, fold):
     feats_te = np.copy(test_feats)
     feats_tr = feats_tr[cv_idx[fold][0], :]
     feats_te = feats_te[cv_idx[fold][1], :]
+
+    # Scale (cross-fit)
+    sc = StandardScaler()
+    feats_tr = sc.fit_transform(feats_tr)
+    feats_te = sc.transform(feats_te)
+
+    # PCA
+    pca = PCA(n_components=n_comp, svd_solver="full")
+    feats_tr = pca.fit_transform(feats_tr)
+    feats_te = pca.transform(feats_te)
+    return feats_tr, feats_te
+
+
+def kstrat_orig_things_prep_tr_te_feats(
+    train_feats, test_feats, cv_idx_tr, cv_idx_te, fold_tr, fold_te, n_comp
+):
+    # Subset train and test feats
+    feats_tr = np.copy(train_feats)
+    feats_te = np.copy(test_feats)
+    feats_tr = feats_tr[cv_idx_tr[fold_tr], :]
+    feats_te = feats_te[cv_idx_te[fold_te], :]
 
     # Scale (cross-fit)
     sc = StandardScaler()
@@ -1702,6 +1770,103 @@ def best_k_bar_plot(plot_object, model_name_dict, plot_best_k):
     )
 
 
+def kstrat_best_k_bar_plot(plot_object, model_name_dict, plot_best_k):
+    """Plots bar subplots for each dimension for a
+    given best k components"""
+
+    # Unpack plot_object variables
+    (
+        model_name,
+        targ_dims,
+        mod_fit_metric,
+        mod_fit_mat,
+        _,
+        best_k_sizes,
+        out_path,
+        fig_label,
+    ) = plot_object.__dict__.values()
+
+    # Get index for plot_best_k
+    bk_idx = np.where(best_k_sizes == plot_best_k)[0]
+
+    # Get knowledge type subtitles
+    know_type_dict = {"V": "Vision", "M": "Manipulation", "F": "Function"}
+    subtitles = [know_type_dict[i[0][0]] for i in targ_dims]
+
+    # Get y-axis variables
+    if mod_fit_metric == "adj_r2":
+        y_lims = [0, 1]
+        y_label = "Model Fit (adj. $R^2$)"
+    elif mod_fit_metric == "r2":
+        y_lims = [0, 1]
+        y_label = "Model Fit ($R^2$)"
+
+    # Figure prep
+    cm = 1 / 2.54
+    fig, ax = plt.subplots(
+        nrows=1,
+        ncols=len(subtitles),
+        figsize=(18 * cm, 7 * cm),
+        dpi=600,
+        sharey=True,
+    )
+    # fig.suptitle(f"{model_name_dict[model_name]}", fontsize=14)
+    plt.subplots_adjust(top=0.8, bottom=0.2, wspace=0.25, left=0.12, right=0.95)
+    plt.figtext(0.028, 0.92, fig_label, fontsize=14)
+
+    # Sub-plots
+    targ_dims_flat = sum(targ_dims, [])
+    for sp in np.arange(len(targ_dims)):
+        # Get model fits for current split
+        plot_targ_dims = targ_dims[sp]
+        plot_td_idx = np.array([targ_dims_flat.index(i) for i in plot_targ_dims])
+        plot_mat = mod_fit_mat[:, bk_idx, plot_td_idx]
+
+        # Create color maps
+        if sp == 0:
+            cmap = colormaps["BrBG"]
+            cmap_intervals = np.linspace(0.9, 0.6, len(plot_targ_dims))
+        elif sp == 1:
+            cmap = colormaps["PuOr"]
+            cmap_intervals = np.linspace(0.9, 0.6, len(plot_targ_dims))
+        elif sp == 2:
+            cmap = colormaps["YlOrBr"]
+            cmap_intervals = np.linspace(0.6, 0.3, len(plot_targ_dims))
+
+        # Sub-plot set-up
+        title_text = f"{subtitles[sp]}"
+        ax[sp].set_ylim(y_lims)
+        ax[sp].set_title(title_text, fontsize=14)
+        ax[sp].set_xticks(
+            np.arange(1, len(plot_targ_dims) + 1),
+            labels=list(np.arange(1, len(plot_targ_dims) + 1)),
+        )
+        ax[sp].set_yticks(np.arange(y_lims[0], y_lims[1] + 0.1, 0.25))
+        ax[sp].spines["right"].set_visible(False)
+        ax[sp].spines["top"].set_visible(False)
+        ax[sp].axhline(0, c="black", linewidth=1)
+
+        if sp == 0:
+            ax[sp].set_ylabel(y_label, fontsize=14)
+            ax[sp].set_xlabel("Dimension", fontsize=14)
+
+        # Plot bars
+        plot_means = np.mean(plot_mat, axis=0)
+        plot_sem = np.std(plot_mat, axis=0, ddof=1) / np.sqrt(plot_mat.shape[0])
+
+        ax[sp].bar(
+            np.arange(1, len(plot_targ_dims) + 1),
+            plot_means,
+            yerr=(plot_sem),
+            color=cmap(cmap_intervals),
+        )
+
+    plt.savefig(
+        out_path
+        + f"{model_name}_{mod_fit_metric}_kstrat_model_fit_best_{plot_best_k}_components.png"
+    )
+
+
 def best_k_bar_plot_perm(plot_object, model_name_dict, plot_best_k):
     """Plots bar subplots for each dimension for a
     given best k components"""
@@ -1830,6 +1995,134 @@ def best_k_bar_plot_perm(plot_object, model_name_dict, plot_best_k):
     )
 
 
+def kstrat_best_k_bar_plot_perm(plot_object, model_name_dict, plot_best_k):
+    """Plots bar subplots for each dimension for a
+    given best k components"""
+
+    # Unpack plot_object variables
+    (
+        model_name,
+        targ_dims,
+        mod_fit_metric,
+        mod_fit_mat,
+        mod_fit_perm_mat,
+        best_k_sizes,
+        out_path,
+        fig_label,
+    ) = plot_object.__dict__.values()
+
+    # Get index for plot_best_k
+    bk_idx = np.where(best_k_sizes == plot_best_k)[0]
+
+    # Get knowledge type subtitles
+    know_type_dict = {"V": "Vision", "M": "Manipulation", "F": "Function"}
+    subtitles = [know_type_dict[i[0][0]] for i in targ_dims]
+
+    # Get y-axis variables
+    if mod_fit_metric == "adj_r2":
+        y_lims = [0, 1]
+        y_label = "Model Fit (adj. $R^2$)"
+    elif mod_fit_metric == "r2":
+        y_lims = [0, 1]
+        y_label = "Model Fit ($R^2$)"
+
+    # Figure prep
+    cm = 1 / 2.54
+    fig, ax = plt.subplots(
+        nrows=1,
+        ncols=len(subtitles),
+        figsize=(18 * cm, 7 * cm),
+        dpi=600,
+        sharey=True,
+    )
+    # fig.suptitle(f"{model_name_dict[model_name]}", fontsize=14)
+    plt.subplots_adjust(top=0.8, bottom=0.2, wspace=0.25, left=0.12, right=0.95)
+    plt.figtext(0.028, 0.92, fig_label, fontsize=14)
+
+    # Sub-plots
+    targ_dims_flat = sum(targ_dims, [])
+    for sp in np.arange(len(targ_dims)):
+        # Get model fits for current split
+        plot_targ_dims = targ_dims[sp]
+        plot_td_idx = np.array([targ_dims_flat.index(i) for i in plot_targ_dims])
+        plot_mat = mod_fit_mat[:, bk_idx, plot_td_idx]
+
+        # Create color maps
+        if sp == 0:
+            cmap = colormaps["BrBG"]
+            cmap_intervals = np.linspace(0.9, 0.6, len(plot_targ_dims))
+        elif sp == 1:
+            cmap = colormaps["PuOr"]
+            cmap_intervals = np.linspace(0.9, 0.6, len(plot_targ_dims))
+        elif sp == 2:
+            cmap = colormaps["YlOrBr"]
+            cmap_intervals = np.linspace(0.6, 0.3, len(plot_targ_dims))
+
+        # Sub-plot set-up
+        title_text = f"{subtitles[sp]}"
+        ax[sp].set_ylim(y_lims)
+        ax[sp].set_title(title_text, fontsize=14)
+        ax[sp].set_xticks(
+            np.arange(1, len(plot_targ_dims) + 1),
+            labels=list(np.arange(1, len(plot_targ_dims) + 1)),
+        )
+        ax[sp].set_yticks(np.arange(y_lims[0], y_lims[1] + 0.1, 0.25))
+        ax[sp].spines["right"].set_visible(False)
+        ax[sp].spines["top"].set_visible(False)
+        ax[sp].axhline(0, c="black", linewidth=1)
+
+        if sp == 0:
+            ax[sp].set_ylabel(y_label, fontsize=14)
+            ax[sp].set_xlabel("Dimension", fontsize=14)
+
+        # Plot bars
+        plot_means = np.mean(plot_mat, axis=0)
+        plot_sem = np.std(plot_mat, axis=0, ddof=1) / np.sqrt(plot_mat.shape[0])
+
+        ax[sp].bar(
+            np.arange(1, len(plot_targ_dims) + 1),
+            plot_means,
+            yerr=(plot_sem),
+            color=cmap(cmap_intervals),
+        )
+
+        # Calculate masks for permutation p-values
+        if isinstance(mod_fit_perm_mat, np.ndarray):
+            # Get exemplar-averaged permutation fits
+            perm_mat = np.nanmean(mod_fit_perm_mat[:, bk_idx, plot_td_idx, :], axis=0)
+            p_vals = np.apply_along_axis(perm_p_row_above_zero, axis=1, arr=perm_mat)
+            p_mask_001, p_mask_05 = perm_p_masks(p_vals)
+
+            # Sig p-values as scatter points
+            ax[sp].scatter(
+                np.where(p_mask_001)[0] + 1,
+                plot_means[np.where(p_mask_001)[0]]
+                + plot_sem[np.where(p_mask_001)[0]]
+                + 0.1,
+                color="black",
+                marker="o",
+                s=30,
+                facecolors=["black"] * len(np.where(p_mask_001)[0]),
+                alpha=1,
+            )
+            ax[sp].scatter(
+                np.where(p_mask_05)[0] + 1,
+                plot_means[np.where(p_mask_05)[0]]
+                + plot_sem[np.where(p_mask_05)[0]]
+                + 0.1,
+                color="black",
+                marker="o",
+                s=30,
+                facecolors=["white"] * len(np.where(p_mask_05)[0]),
+                alpha=1,
+            )
+
+    plt.savefig(
+        out_path
+        + f"{model_name}_{mod_fit_metric}_kstrat_model_fit_best_{plot_best_k}_components_perm.png"
+    )
+
+
 def best_k_bar_plot_things(plot_object, model_name_dict, plot_best_k):
     """Plots bar subplots for each dimension for a
     given best k components"""
@@ -1924,6 +2217,103 @@ def best_k_bar_plot_things(plot_object, model_name_dict, plot_best_k):
     plt.savefig(
         out_path
         + f"{model_name}_{mod_fit_metric}_model_fit_best_{plot_best_k}_components_things.png"
+    )
+
+
+def kstrat_best_k_bar_plot_things(plot_object, model_name_dict, plot_best_k):
+    """Plots bar subplots for each dimension for a
+    given best k components"""
+
+    # Unpack plot_object variables
+    (
+        model_name,
+        targ_dims,
+        mod_fit_metric,
+        mod_fit_mat,
+        _,
+        best_k_sizes,
+        out_path,
+        fig_label,
+    ) = plot_object.__dict__.values()
+
+    # Get index for plot_best_k
+    bk_idx = np.where(best_k_sizes == plot_best_k)[0]
+
+    # Get knowledge type subtitles
+    know_type_dict = {"V": "Vision", "M": "Manipulation", "F": "Function"}
+    subtitles = [know_type_dict[i[0][0]] for i in targ_dims]
+
+    # Get y-axis variables
+    if mod_fit_metric == "adj_r2":
+        y_lims = [0, 1]
+        y_label = "Model Fit (adj. $R^2$)"
+    elif mod_fit_metric == "r2":
+        y_lims = [0, 1]
+        y_label = "Model Fit ($R^2$)"
+
+    # Figure prep
+    cm = 1 / 2.54
+    fig, ax = plt.subplots(
+        nrows=1,
+        ncols=len(subtitles),
+        figsize=(18 * cm, 7 * cm),
+        dpi=600,
+        sharey=True,
+    )
+    # fig.suptitle(f"{model_name_dict[model_name]}", fontsize=14)
+    plt.subplots_adjust(top=0.8, bottom=0.2, wspace=0.25, left=0.12, right=0.95)
+    plt.figtext(0.028, 0.92, fig_label, fontsize=14)
+
+    # Sub-plots
+    targ_dims_flat = sum(targ_dims, [])
+    for sp in np.arange(len(targ_dims)):
+        # Get model fits for current split
+        plot_targ_dims = targ_dims[sp]
+        plot_td_idx = np.array([targ_dims_flat.index(i) for i in plot_targ_dims])
+        plot_mat = mod_fit_mat[:, bk_idx, plot_td_idx]
+
+        # Create color maps
+        if sp == 0:
+            cmap = colormaps["BrBG"]
+            cmap_intervals = np.linspace(0.9, 0.6, len(plot_targ_dims))
+        elif sp == 1:
+            cmap = colormaps["PuOr"]
+            cmap_intervals = np.linspace(0.9, 0.6, len(plot_targ_dims))
+        elif sp == 2:
+            cmap = colormaps["YlOrBr"]
+            cmap_intervals = np.linspace(0.6, 0.3, len(plot_targ_dims))
+
+        # Sub-plot set-up
+        title_text = f"{subtitles[sp]}"
+        ax[sp].set_ylim(y_lims)
+        ax[sp].set_title(title_text, fontsize=14)
+        ax[sp].set_xticks(
+            np.arange(1, len(plot_targ_dims) + 1),
+            labels=list(np.arange(1, len(plot_targ_dims) + 1)),
+        )
+        ax[sp].set_yticks(np.arange(y_lims[0], y_lims[1] + 0.1, 0.25))
+        ax[sp].spines["right"].set_visible(False)
+        ax[sp].spines["top"].set_visible(False)
+        ax[sp].axhline(0, c="black", linewidth=1)
+
+        if sp == 0:
+            ax[sp].set_ylabel(y_label, fontsize=14)
+            ax[sp].set_xlabel("Dimension", fontsize=14)
+
+        # Plot bars
+        plot_means = np.mean(plot_mat, axis=0)
+        plot_sem = np.std(plot_mat, axis=0, ddof=1) / np.sqrt(plot_mat.shape[0])
+
+        ax[sp].bar(
+            np.arange(1, len(plot_targ_dims) + 1),
+            plot_means,
+            yerr=(plot_sem),
+            color=cmap(cmap_intervals),
+        )
+
+    plt.savefig(
+        out_path
+        + f"{model_name}_{mod_fit_metric}_kstrat_model_fit_best_{plot_best_k}_components_things.png"
     )
 
 
@@ -2052,6 +2442,134 @@ def best_k_bar_plot_things_perm(plot_object, model_name_dict, plot_best_k):
     plt.savefig(
         out_path
         + f"{model_name}_{mod_fit_metric}_model_fit_best_{plot_best_k}_components_perm_things.png"
+    )
+
+
+def kstrat_best_k_bar_plot_things_perm(plot_object, model_name_dict, plot_best_k):
+    """Plots bar subplots for each dimension for a
+    given best k components"""
+
+    # Unpack plot_object variables
+    (
+        model_name,
+        targ_dims,
+        mod_fit_metric,
+        mod_fit_mat,
+        mod_fit_perm_mat,
+        best_k_sizes,
+        out_path,
+        fig_label,
+    ) = plot_object.__dict__.values()
+
+    # Get index for plot_best_k
+    bk_idx = np.where(best_k_sizes == plot_best_k)[0]
+
+    # Get knowledge type subtitles
+    know_type_dict = {"V": "Vision", "M": "Manipulation", "F": "Function"}
+    subtitles = [know_type_dict[i[0][0]] for i in targ_dims]
+
+    # Get y-axis variables
+    if mod_fit_metric == "adj_r2":
+        y_lims = [0, 1]
+        y_label = "Model Fit (adj. $R^2$)"
+    elif mod_fit_metric == "r2":
+        y_lims = [0, 1]
+        y_label = "Model Fit ($R^2$)"
+
+    # Figure prep
+    cm = 1 / 2.54
+    fig, ax = plt.subplots(
+        nrows=1,
+        ncols=len(subtitles),
+        figsize=(18 * cm, 7 * cm),
+        dpi=600,
+        sharey=True,
+    )
+    # fig.suptitle(f"{model_name_dict[model_name]}", fontsize=14)
+    plt.subplots_adjust(top=0.8, bottom=0.2, wspace=0.25, left=0.12, right=0.95)
+    plt.figtext(0.028, 0.92, fig_label, fontsize=14)
+
+    # Sub-plots
+    targ_dims_flat = sum(targ_dims, [])
+    for sp in np.arange(len(targ_dims)):
+        # Get model fits for current split
+        plot_targ_dims = targ_dims[sp]
+        plot_td_idx = np.array([targ_dims_flat.index(i) for i in plot_targ_dims])
+        plot_mat = mod_fit_mat[:, bk_idx, plot_td_idx]
+
+        # Create color maps
+        if sp == 0:
+            cmap = colormaps["BrBG"]
+            cmap_intervals = np.linspace(0.9, 0.6, len(plot_targ_dims))
+        elif sp == 1:
+            cmap = colormaps["PuOr"]
+            cmap_intervals = np.linspace(0.9, 0.6, len(plot_targ_dims))
+        elif sp == 2:
+            cmap = colormaps["YlOrBr"]
+            cmap_intervals = np.linspace(0.6, 0.3, len(plot_targ_dims))
+
+        # Sub-plot set-up
+        title_text = f"{subtitles[sp]}"
+        ax[sp].set_ylim(y_lims)
+        ax[sp].set_title(title_text, fontsize=14)
+        ax[sp].set_xticks(
+            np.arange(1, len(plot_targ_dims) + 1),
+            labels=list(np.arange(1, len(plot_targ_dims) + 1)),
+        )
+        ax[sp].set_yticks(np.arange(y_lims[0], y_lims[1] + 0.1, 0.25))
+        ax[sp].spines["right"].set_visible(False)
+        ax[sp].spines["top"].set_visible(False)
+        ax[sp].axhline(0, c="black", linewidth=1)
+
+        if sp == 0:
+            ax[sp].set_ylabel(y_label, fontsize=14)
+            ax[sp].set_xlabel("Dimension", fontsize=14)
+
+        # Plot bars
+        plot_means = np.mean(plot_mat, axis=0)
+        plot_sem = np.std(plot_mat, axis=0, ddof=1) / np.sqrt(plot_mat.shape[0])
+
+        ax[sp].bar(
+            np.arange(1, len(plot_targ_dims) + 1),
+            plot_means,
+            yerr=(plot_sem),
+            color=cmap(cmap_intervals),
+        )
+
+        # Calculate masks for permutation p-values
+        if isinstance(mod_fit_perm_mat, np.ndarray):
+            # Get exemplar-averaged permutation fits
+            perm_mat = np.nanmean(mod_fit_perm_mat[:, bk_idx, plot_td_idx, :], axis=0)
+            p_vals = np.apply_along_axis(perm_p_row_above_zero, axis=1, arr=perm_mat)
+            p_mask_001, p_mask_05 = perm_p_masks(p_vals)
+
+            # Sig p-values as scatter points
+            ax[sp].scatter(
+                np.where(p_mask_001)[0] + 1,
+                plot_means[np.where(p_mask_001)[0]]
+                + plot_sem[np.where(p_mask_001)[0]]
+                + 0.1,
+                color="black",
+                marker="o",
+                s=30,
+                facecolors=["black"] * len(np.where(p_mask_001)[0]),
+                alpha=1,
+            )
+            ax[sp].scatter(
+                np.where(p_mask_05)[0] + 1,
+                plot_means[np.where(p_mask_05)[0]]
+                + plot_sem[np.where(p_mask_05)[0]]
+                + 0.1,
+                color="black",
+                marker="o",
+                s=30,
+                facecolors=["white"] * len(np.where(p_mask_05)[0]),
+                alpha=1,
+            )
+
+    plt.savefig(
+        out_path
+        + f"{model_name}_{mod_fit_metric}_kstrat_model_fit_best_{plot_best_k}_components_perm_things.png"
     )
 
 
