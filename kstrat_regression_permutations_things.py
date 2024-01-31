@@ -30,10 +30,6 @@ dim_data = os.path.join(
 n_perm = 5000
 mod_fit_metrics = ["adj_r2", "r2"]
 
-# Test
-n_perm = 5
-mod_fit_metrics = ["adj_r2"]
-
 # --- Main
 
 # Load data object
