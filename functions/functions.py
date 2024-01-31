@@ -523,6 +523,72 @@ def kstrat_mod_fit_lio_perm(
     return mod_fit_perm_mat
 
 
+def kstrat_mod_fit_lio_things_perm(
+    pred_mat, dim_vals, best_k_sizes, targ_dims, n_perm, eval_func
+):
+    """Model fit exemplar-set-wise predictions with n permuted
+    dimension(s)"""
+
+    def get_eval_score_func(eval_func):
+        """Get eval_score function and plotting variables for desired metric"""
+        if eval_func == "r2":
+
+            def eval_score(test_y, pred_y, _):
+                return r2_score(test_y, pred_y)
+
+        elif eval_func == "adj_r2":
+
+            def eval_score(test_y, pred_y, best_k_feats):
+                return 1 - (1 - r2_score(test_y, pred_y)) * (len(test_y) - 1) / (
+                    len(test_y) - best_k_feats
+                )
+
+        return eval_score
+
+    def make_perm_idx(arr, n_perm):
+        """n_perm + 1 * dim_vals matrix of shuffled
+        indices. Unshuffled indices are first row"""
+        perm_idx = np.zeros((n_perm + 1, len(arr)))
+        perm_idx[0, :] = arr
+        for gp_idx in np.arange(1, n_perm + 1):
+            np.random.shuffle(arr)
+            perm_idx[gp_idx, :] = arr
+        perm_idx = perm_idx.astype("int")
+        return perm_idx
+
+    # Get eval score func
+    eval_score = get_eval_score_func(eval_func)
+
+    # Initialize
+    n_fold_tr, n_fold_te, n_pred, n_bks, n_targ_dims = pred_mat.shape
+    mod_fit_perm_mat = np.zeros(
+        (n_fold_tr, n_fold_te, n_bks, n_targ_dims, n_perm + 1), dtype=np.float16
+    )
+
+    tic = time.time()
+    for td in np.arange(n_targ_dims):
+        for bks in np.arange(n_bks):
+            # Get permutation indices
+            perm_idx = make_perm_idx(np.arange(dim_vals.shape[0]), n_perm)
+            for p in np.arange(len(perm_idx)):
+                for tr_f in np.arange(n_fold_tr):
+                    for te_f in np.arange(n_fold_te):
+                        mod_fit_perm_mat[tr_f, te_f, bks, td, p] = eval_score(
+                            dim_vals[perm_idx[p, :], td],
+                            pred_mat[tr_f, te_f, :, bks, td],
+                            best_k_sizes[bks],
+                        )
+                if p % int(n_perm / 10) == 0:
+                    print(
+                        f"{targ_dims[td]} {best_k_sizes[bks]} components: {p + 1} permutations done.\n"
+                        + f"Total run time: {time.time()-tic: .02f} seconds"
+                    )
+    # Mean across test folds
+    mod_fit_perm_mat = np.nanmean(mod_fit_perm_mat, axis=1)
+
+    return mod_fit_perm_mat
+
+
 # 200 model fits
 # def mod_fit_lio_extra_perm(
 #     pred_mat, proxy_vals, best_k_sizes, targ_dims, n_perm, eval_func, n_exemp
