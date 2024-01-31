@@ -446,7 +446,7 @@ def mod_fit_lio_perm(pred_mat, dim_vals, best_k_sizes, targ_dims, n_perm, eval_f
         for bks in np.arange(n_bks):
             # Get permutation indices
             perm_idx = make_perm_idx(np.arange(dim_vals.shape[0]), n_perm)
-            for p in np.arange(n_perm):
+            for p in np.arange(len(perm_idx)):
                 for e in np.arange(n_exemp):
                     mod_fit_perm_mat[e, bks, td, p] = eval_score(
                         dim_vals[perm_idx[p, :], td],
@@ -508,7 +508,7 @@ def kstrat_mod_fit_lio_perm(
         for bks in np.arange(n_bks):
             # Get permutation indices
             perm_idx = make_perm_idx(np.arange(dim_vals.shape[0]), n_perm)
-            for p in np.arange(n_perm):
+            for p in np.arange(len(perm_idx)):
                 for f in np.arange(n_fold):
                     mod_fit_perm_mat[f, bks, td, p] = eval_score(
                         dim_vals[perm_idx[p, :], td],
@@ -575,7 +575,7 @@ def kstrat_mod_fit_lio_perm(
 #             perm_idx = make_perm_idx_extra(
 #                 np.arange(proxy_vals.shape[0]), n_perm, n_exemp
 #             )
-#             for p in np.arange(n_perm):
+#             for p in np.arange(len(perm_idx)):
 #                 for e in np.arange(n_exemp):
 #                     mod_fit_perm_mat[e, bks, td, p] = eval_score(
 #                         proxy_vals[perm_idx[p, :], td],
@@ -648,7 +648,7 @@ def mod_fit_lio_extra_perm(
             perm_idx = make_perm_idx_extra(
                 np.arange(proxy_vals.shape[0]), n_perm, n_exemp
             )
-            for p in np.arange(n_perm):
+            for p in np.arange(len(perm_idx)):
                 for e in np.arange(n_exemp):
                     mod_fit_perm_mat[e, bks, td, p] = eval_score(
                         proxy_vals[perm_idx[p, :], td],
