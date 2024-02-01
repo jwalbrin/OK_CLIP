@@ -37,6 +37,14 @@ data_object_pairs = [
         "kstrat_10_object_clip-vit_eighty_tools.pkl",
         "kstrat_10_object_in1k-alexnet_eighty_tools.pkl",
     ),
+    (
+        "kstrat_10_object_clip-vit_eighty_tools.pkl",
+        "kstrat_10_object_ecoset-vgg16_eighty_tools.pkl",
+    ),
+    (
+        "kstrat_10_object_clip-vit_eighty_tools.pkl",
+        "kstrat_10_object_ecoset-alexnet_eighty_tools.pkl",
+    ),
 ]
 
 main_path = os.path.dirname(os.path.abspath(__file__))
