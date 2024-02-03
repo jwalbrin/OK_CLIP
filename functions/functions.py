@@ -729,6 +729,73 @@ def mod_fit_lio_extra_perm(
     return mod_fit_perm_mat
 
 
+def kstrat_mod_fit_lio_extra_perm(
+    pred_mat, proxy_vals, best_k_sizes, targ_dims, n_perm, eval_func, n_exemp
+):
+    """Model fit exemplar-set-wise predictions with n permuted
+    dimension(s)"""
+
+    def get_eval_score_func(eval_func):
+        """Get eval_score function and plotting variables for desired metric"""
+        if eval_func == "r2":
+
+            def eval_score(test_y, pred_y, _):
+                return r2_score(test_y, pred_y)
+
+        elif eval_func == "adj_r2":
+
+            def eval_score(test_y, pred_y, best_k_feats):
+                return 1 - (1 - r2_score(test_y, pred_y)) * (len(test_y) - 1) / (
+                    len(test_y) - best_k_feats
+                )
+
+        return eval_score
+
+    def make_perm_idx_extra(arr, n_perm, n_exemp):
+        """n_perm + 1 * (proxy_vals * n_exemp) matrix of
+        shuffled indices. Unshuffled indices are first row.
+        Shuffles are stratified (i.e. all 10 consecutive samples
+        (exemplars) receive the same suffled index)"""
+        perm_idx = np.zeros((n_perm + 1, len(arr)))
+        perm_idx[0, :] = arr
+        for gp_idx in np.arange(1, n_perm + 1):
+            np.random.shuffle(arr)
+            perm_idx[gp_idx, :] = arr
+        perm_idx = perm_idx.astype("int")
+        return perm_idx
+
+    # Get eval score func
+    eval_score = get_eval_score_func(eval_func)
+
+    # Initialize
+    n_fold, n_preds, n_bks, n_targ_dims = pred_mat.shape
+    n_items = int(n_preds / n_exemp)
+    mod_fit_perm_mat = np.zeros(
+        (n_fold, n_bks, n_targ_dims, n_perm + 1), dtype=np.float16
+    )
+
+    tic = time.time()
+    for td in np.arange(n_targ_dims):
+        for bks in np.arange(n_bks):
+            # Get permutation indices
+            perm_idx = make_perm_idx_extra(
+                np.arange(proxy_vals.shape[0]), n_perm, n_exemp
+            )
+            for p in np.arange(len(perm_idx)):
+                for f in np.arange(n_fold):
+                    mod_fit_perm_mat[f, bks, td, p] = eval_score(
+                        np.repeat(proxy_vals[perm_idx[p, :], td],n_exemp),
+                        pred_mat[f, :, bks, td],
+                        best_k_sizes[bks],
+                    )
+                if p % int(n_perm / 10) == 0:
+                    print(
+                        f"{targ_dims[td]} {best_k_sizes[bks]} components: {p + 1} permutations done.\n"
+                        + f"Total run time: {time.time()-tic: .02f} seconds"
+                    )
+    return mod_fit_perm_mat
+
+
 def perm_p_row(perm_mat_row):
     """Calculate permutation p per each best_k_component set"""
     p_val = 1 - ((np.sum(perm_mat_row[0] >= perm_mat_row) - 1) / (len(perm_mat_row)))
@@ -1344,7 +1411,189 @@ def kstrat_incremental_lineplot_unique_variance_together(
         ax[sp].set_xticks(
             np.arange(1, len(best_k_sizes) + 1), labels=list(np.array(best_k_sizes))
         )
-        ax[sp].set_yticks(np.arange(y_lims[0], y_lims[1] + 0.1, 0.1))
+        ax[sp].set_yticks(np.arange(y_lims[0], y_lims[1] + 0.1, y_lims[1] / 5))
+        ax[sp].spines["right"].set_visible(False)
+        ax[sp].spines["top"].set_visible(False)
+        # ax[sp].axhline(0, c="grey", linewidth=2, alpha=0.5, linestyle="--")
+
+        if sp == 0:
+            ax[sp].set_ylabel(y_label, fontsize=14)
+            ax[sp].set_xlabel("Best K Components", fontsize=14)
+
+            # Plot for object b
+        for d_idx, d_name in enumerate(plot_targ_dims):
+            if d_idx == 0:
+                ax[sp].errorbar(
+                    np.arange(1, len(best_k_sizes) + 1),
+                    np.mean(plot_mat_b[:, :, d_idx], axis=0),
+                    yerr=(
+                        np.std(plot_mat_b[:, :, d_idx], axis=0, ddof=1)
+                        / np.sqrt(plot_mat_b.shape[0])
+                    ),
+                    color=gray_cmap(gray_cmap_intervals[d_idx]),
+                    linewidth=2,
+                    alpha=0.75,
+                )
+            else:
+                ax[sp].errorbar(
+                    np.arange(1, len(best_k_sizes) + 1),
+                    np.mean(plot_mat_b[:, :, d_idx], axis=0),
+                    yerr=(
+                        np.std(plot_mat_b[:, :, d_idx], axis=0, ddof=1)
+                        / np.sqrt(plot_mat_b.shape[0])
+                    ),
+                    color=gray_cmap(gray_cmap_intervals[d_idx]),
+                    linewidth=1.25,
+                    alpha=0.75,
+                )
+
+        # Plot each dimension for object a
+        for d_idx, d_name in enumerate(plot_targ_dims):
+            if d_idx == 0:
+                ax[sp].errorbar(
+                    np.arange(1, len(best_k_sizes) + 1),
+                    np.mean(plot_mat_a[:, :, d_idx], axis=0),
+                    yerr=(
+                        np.std(plot_mat_a[:, :, d_idx], axis=0, ddof=1)
+                        / np.sqrt(plot_mat_a.shape[0])
+                    ),
+                    label=d_name[-1],
+                    color=cmap(cmap_intervals[d_idx]),
+                    linewidth=4,
+                )
+            else:
+                ax[sp].errorbar(
+                    np.arange(1, len(best_k_sizes) + 1),
+                    np.mean(plot_mat_a[:, :, d_idx], axis=0),
+                    yerr=(
+                        np.std(plot_mat_a[:, :, d_idx], axis=0, ddof=1)
+                        / np.sqrt(plot_mat_a.shape[0])
+                    ),
+                    label=d_name[-1],
+                    color=cmap(cmap_intervals[d_idx]),
+                    linewidth=2.5,
+                )
+
+        ax[sp].legend(
+            loc="upper right",
+            bbox_to_anchor=(1.2, 1),
+            labelspacing=0.1,
+            fontsize=6,
+            title="Dim.",
+            title_fontsize=5,
+            frameon=False,
+            markerscale=None,
+            markerfirst=False,
+        )
+
+    plt.savefig(
+        out_path
+        + f"{model_name_dict[model_names[0]]}_>_{model_name_dict[model_names[1]]}"
+        + "_kstrat_unique_variance_model_fit_incremental_together.png"
+    )
+
+
+def kstrat_incremental_lineplot_unique_variance_together_rescale(
+    plot_object_a, plot_object_b, model_name_dict
+):
+    """Creates linechart subplots (one per knowledge type)
+    where x = best_k_components, y = exemplar-averaged unique
+    variance explained
+    Plots both objects on the same plots (object be with dashed lines)"""
+
+    # Unpack plot_object variables
+    (
+        model_names,
+        targ_dims,
+        _,
+        mod_fit_mat_a,
+        _,
+        best_k_sizes,
+        out_path,
+        fig_label,
+    ) = plot_object_a.__dict__.values()
+
+    (
+        _,
+        _,
+        _,
+        mod_fit_mat_b,
+        _,
+        _,
+        _,
+        _,
+    ) = plot_object_b.__dict__.values()
+
+    # Get knowledge type subtitles
+    know_type_dict = {"V": "Vision", "M": "Manipulation", "F": "Function"}
+    subtitles = [know_type_dict[i[0][0]] for i in targ_dims]
+
+    # Get slice indices to remove "problematic exemplars"
+    if any([True if "in1k-alexnet" in i else False for i in model_names]):
+        slice_idx = np.setdiff1d(np.arange(len(mod_fit_mat_a)), 7)
+    elif any([True if "ecoset-alexnet" in i else False for i in model_names]):
+        slice_idx = np.setdiff1d(np.arange(len(mod_fit_mat_a)), 4)
+    elif any([True if "ecoset-vgg16" in i else False for i in model_names]):
+        slice_idx = np.arange(len(mod_fit_mat_a))
+
+    # Slice all but the 8th index (i.e. problematic exemplar set)
+    mod_fit_mat_a = mod_fit_mat_a[slice_idx, :, :]
+    mod_fit_mat_b = mod_fit_mat_b[slice_idx, :, :]
+
+    # y-variables
+    y_lims = [0, 2]
+    y_label = "Unique Var."
+
+    # Figure prep
+    cm = 1 / 2.54
+    fig, ax = plt.subplots(
+        nrows=1,
+        ncols=len(subtitles),
+        figsize=(18 * cm, 7 * cm),
+        dpi=600,
+        sharey=True,
+    )
+    fig.suptitle(
+        f"{model_name_dict[model_names[0]]} > {model_name_dict[model_names[1]]}",
+        fontsize=14,
+    )
+    plt.subplots_adjust(top=0.8, bottom=0.2, wspace=0.25, left=0.11, right=0.95)
+    plt.figtext(0.028, 0.92, fig_label, fontsize=14)
+
+    # Sub-plots
+    targ_dims_flat = sum(targ_dims, [])
+    for sp in np.arange(len(targ_dims)):
+        # Get model fits for current split
+        plot_targ_dims = targ_dims[sp]
+        plot_td_idx = np.array([targ_dims_flat.index(i) for i in plot_targ_dims])
+
+        # Get plot mats
+        plot_mat_a = mod_fit_mat_a[:, :, plot_td_idx]
+        plot_mat_b = mod_fit_mat_b[:, :, plot_td_idx]
+
+        # Create color maps
+        gray_cmap = colormaps["gray"]
+        if sp == 0:
+            cmap = colormaps["BrBG"]
+            cmap_intervals = np.linspace(0.9, 0.6, len(plot_targ_dims))
+            gray_cmap_intervals = np.linspace(0, 0.65, len(plot_targ_dims))
+        elif sp == 1:
+            cmap = colormaps["PuOr"]
+            cmap_intervals = np.linspace(0.9, 0.6, len(plot_targ_dims))
+            gray_cmap_intervals = np.linspace(0, 0.65, len(plot_targ_dims))
+        elif sp == 2:
+            cmap = colormaps["YlOrBr"]
+            cmap_intervals = np.linspace(0.6, 0.3, len(plot_targ_dims))
+            gray_cmap_intervals = np.linspace(0, 0.65, len(plot_targ_dims))
+
+        # Sub-plot set-up
+        title_text = f"{subtitles[sp]}"
+        ax[sp].set_ylim(y_lims)
+        ax[sp].set_title(title_text, fontsize=14)
+        ax[sp].set_xticks(
+            np.arange(1, len(best_k_sizes) + 1), labels=list(np.array(best_k_sizes))
+        )
+        ax[sp].set_yticks(np.arange(y_lims[0], y_lims[1] + 0.1, y_lims[1] / 5))
         ax[sp].spines["right"].set_visible(False)
         ax[sp].spines["top"].set_visible(False)
         # ax[sp].axhline(0, c="grey", linewidth=2, alpha=0.5, linestyle="--")
