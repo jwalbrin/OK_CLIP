@@ -6,6 +6,7 @@ Plots both for a and b as line charts
 where x is best k components, 
 y is unique variance explained
 """
+
 import os
 
 from functions.functions import (
@@ -16,14 +17,16 @@ from functions.functions import (
     prep_dim_data,
     kstrat_mod_fit_lio,
     kstrat_incremental_lineplot_unique_variance_together,
+    kstrat_incremental_lineplot_unique_variance_together_rescale,
 )
 
 # --- User input
 pair_object_name = "kstrat_10_ab_predictions.pkl"
 ab_names = ["clip-vit", "in21k-vit"]  # must match order of pair in pair_object
-# ab_names = ["clip-vit", "in1k-resnext101"]  # must match order of pair in pair_object
-# ab_names = ["clip-vit", "in1k-vgg16"]  # must match order of pair in pair_object
-# ab_names = ["clip-vit", "in1k-alexnet"]  # must match order of pair in pair_object
+ab_names = ["clip-vit", "in1k-resnext101"]  # must match order of pair in pair_object
+ab_names = ["clip-vit", "in1k-vgg16"]  # must match order of pair in pair_object
+ab_names = ["clip-vit", "in1k-alexnet"]  # must match order of pair in pair_object
+
 
 main_path = os.path.dirname(os.path.abspath(__file__))
 pair_object_path = os.path.join(main_path, "results", pair_object_name)
@@ -36,7 +39,7 @@ out_path = os.path.join(
 
 mod_fit_metric = "r2"  # "adj_r2"
 
-fig_label = "A)"
+fig_label = "D)"
 
 model_name_dict = {
     "clip-vit": "CLIP-ViT",
@@ -112,6 +115,14 @@ plot_object_b = PlotObject(
     out_path=None,
     fig_label=None,
 )
-kstrat_incremental_lineplot_unique_variance_together(
-    plot_object_a, plot_object_b, model_name_dict
-)
+
+if any([True if "alexnet" in i else False for i in ab_names]) or any(
+    [True if "ecoset-vgg16" in i else False for i in ab_names]
+):
+    kstrat_incremental_lineplot_unique_variance_together_rescale(
+        plot_object_a, plot_object_b, model_name_dict
+    )
+else:
+    kstrat_incremental_lineplot_unique_variance_together(
+        plot_object_a, plot_object_b, model_name_dict
+    )
