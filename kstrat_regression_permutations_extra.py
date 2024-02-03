@@ -29,9 +29,6 @@ dim_data = os.path.join(
 n_perm = 5000
 mod_fit_metrics = ["adj_r2", "r2"]
 
-n_perm = 10
-mod_fit_metrics = ["adj_r2"]
-
 # --- Main
 
 # Load data object
