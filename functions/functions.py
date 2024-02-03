@@ -967,11 +967,30 @@ def kstrat_incremental_lineplot(plot_object, model_name_dict):
 
     # Get y-axis variables
     if mod_fit_metric == "adj_r2":
-        y_lims = [-0.2, 1]
         y_label = "Model Fit (adj. $R^2$)"
     elif mod_fit_metric == "r2":
-        y_lims = [0, 1]
         y_label = "Model Fit ($R^2$)"
+
+    # Get slice indices to remove "problematic exemplars" and y-variables
+    if model_name == "in1k-alexnet":
+        slice_idx = np.setdiff1d(np.arange(len(mod_fit_mat)), 7)
+        y_lims = [-1, 1.2]
+        y_int = 0.5
+    elif model_name == "ecoset-alexnet":
+        slice_idx = np.setdiff1d(np.arange(len(mod_fit_mat)), 4)
+        y_lims = [-1, 1.2]
+        y_int = 0.5
+    elif model_name == "ecoset-vgg16":
+        slice_idx = np.arange(len(mod_fit_mat))
+        y_lims = [-1, 1.2]
+        y_int = 0.5
+    else:
+        slice_idx = np.arange(len(mod_fit_mat))
+        y_lims = [0, 1.2]
+        y_int = 0.2
+
+    # Slice all but the 8th index (i.e. problematic exemplar set)
+    mod_fit_mat = mod_fit_mat[slice_idx, :, :]
 
     # Figure prep
     cm = 1 / 2.54
@@ -1012,7 +1031,7 @@ def kstrat_incremental_lineplot(plot_object, model_name_dict):
         ax[sp].set_xticks(
             np.arange(1, len(best_k_sizes) + 1), labels=list(np.array(best_k_sizes))
         )
-        ax[sp].set_yticks(np.arange(y_lims[0], y_lims[1] + 0.1, 0.2))
+        ax[sp].set_yticks(np.arange(y_lims[0], y_lims[1] + 0.1, y_int))
         ax[sp].spines["right"].set_visible(False)
         ax[sp].spines["top"].set_visible(False)
 
@@ -1855,11 +1874,30 @@ def kstrat_incremental_lineplot_with_perm(plot_object, model_name_dict):
 
     # Get y-axis variables
     if mod_fit_metric == "adj_r2":
-        y_lims = [-0.2, 1.2]
         y_label = "Model Fit (adj. $R^2$)"
     elif mod_fit_metric == "r2":
-        y_lims = [0, 1.2]
         y_label = "Model Fit ($R^2$)"
+
+    # Get slice indices to remove "problematic exemplars" and y-variables
+    if model_name == "in1k-alexnet":
+        slice_idx = np.setdiff1d(np.arange(len(mod_fit_mat)), 7)
+        y_lims = [-1, 1.2]
+        y_int = 0.5
+    elif model_name == "ecoset-alexnet":
+        slice_idx = np.setdiff1d(np.arange(len(mod_fit_mat)), 4)
+        y_lims = [-1, 1.2]
+        y_int = 0.5
+    elif model_name == "ecoset-vgg16":
+        slice_idx = np.arange(len(mod_fit_mat))
+        y_lims = [-1, 1.2]
+        y_int = 0.5
+    else:
+        slice_idx = np.arange(len(mod_fit_mat))
+        y_lims = [0, 1.2]
+        y_int = 0.2
+
+    # Slice all but the 8th index (i.e. problematic exemplar set)
+    mod_fit_mat = mod_fit_mat[slice_idx, :, :]
 
     # Figure prep
     cm = 1 / 2.54
@@ -1900,7 +1938,7 @@ def kstrat_incremental_lineplot_with_perm(plot_object, model_name_dict):
         ax[sp].set_xticks(
             np.arange(1, len(best_k_sizes) + 1), labels=list(np.array(best_k_sizes))
         )
-        ax[sp].set_yticks(np.arange(y_lims[0], y_lims[1], 0.2))
+        ax[sp].set_yticks(np.arange(y_lims[0], y_lims[1], y_int))
         ax[sp].spines["right"].set_visible(False)
         ax[sp].spines["top"].set_visible(False)
 
