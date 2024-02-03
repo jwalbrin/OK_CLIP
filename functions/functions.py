@@ -784,7 +784,7 @@ def kstrat_mod_fit_lio_extra_perm(
             for p in np.arange(len(perm_idx)):
                 for f in np.arange(n_fold):
                     mod_fit_perm_mat[f, bks, td, p] = eval_score(
-                        np.repeat(proxy_vals[perm_idx[p, :], td],n_exemp),
+                        np.repeat(proxy_vals[perm_idx[p, :], td], n_exemp),
                         pred_mat[f, :, bks, td],
                         best_k_sizes[bks],
                     )
@@ -1015,7 +1015,9 @@ def kstrat_incremental_lineplot(plot_object, model_name_dict):
         ax[sp].set_yticks(np.arange(y_lims[0], y_lims[1] + 0.1, 0.2))
         ax[sp].spines["right"].set_visible(False)
         ax[sp].spines["top"].set_visible(False)
-        ax[sp].axvline(3, 0, 1, c="grey", linewidth=2, alpha=0.5, linestyle="--")
+
+        if model_name == "clip-vit":
+            ax[sp].axvline(3, 0, 0.59, c="grey", linewidth=2, alpha=0.5, linestyle="--")
 
         if sp == 0:
             ax[sp].set_ylabel(y_label, fontsize=14)
@@ -1901,7 +1903,9 @@ def kstrat_incremental_lineplot_with_perm(plot_object, model_name_dict):
         ax[sp].set_yticks(np.arange(y_lims[0], y_lims[1], 0.2))
         ax[sp].spines["right"].set_visible(False)
         ax[sp].spines["top"].set_visible(False)
-        ax[sp].axvline(3, 0, 0.59, c="grey", linewidth=2, alpha=0.5, linestyle="--")
+
+        if model_name == "clip-vit":
+            ax[sp].axvline(3, 0, 0.59, c="grey", linewidth=2, alpha=0.5, linestyle="--")
 
         if sp == 0:
             ax[sp].set_ylabel(y_label, fontsize=14)
