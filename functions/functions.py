@@ -1898,6 +1898,7 @@ def kstrat_incremental_lineplot_with_perm(plot_object, model_name_dict):
 
     # Slice all but the 8th index (i.e. problematic exemplar set)
     mod_fit_mat = mod_fit_mat[slice_idx, :, :]
+    mod_fit_perm_mat = mod_fit_perm_mat[slice_idx, :, :, :]
 
     # Figure prep
     cm = 1 / 2.54
