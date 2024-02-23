@@ -1,11 +1,8 @@
 """ 
-kstrat_regression_predict_things.py
-Generate CV leave-one-item-out (lio) predictions for
-63 things images (10 exemplars each) and assign as a matrix 
-(pred_mat) to input data_object pred_mat.shape: 
-n_fold_tr * n_fold_te * n_pred * best_k_sizes * targ_dims
-(e.g. 10, 10, 63, 7, 15) 
+oc_predictions_things.py
+Generate cross-validated predictions (for each dimension, component set)
 """
+
 import numpy as np
 import os
 import time
@@ -24,7 +21,7 @@ from functions.functions import (
 )
 
 # --- User input
-data_object_name = "kstrat_10_object_clip-vit_eighty_tools.pkl"
+data_object_name = "data_object_clip-vit_eighty_tools.pkl"
 
 main_path = os.path.dirname(os.path.abspath(__file__))
 out_path = os.path.join(main_path, "results/")
@@ -120,5 +117,5 @@ things_object = DataObject(
     mod_fit_perm_mat_adj_r2=None,
 )
 save_data_object(
-    things_object, out_path + f"kstrat_object_{data_object.model_name}_things.pkl"
+    things_object, out_path + f"data_object_{data_object.model_name}_things.pkl"
 )

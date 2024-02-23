@@ -1,10 +1,8 @@
 """ 
-kstrat_component_select.py
-For an input DNN layer apply cross-validated RFE
-For each iteration (behavioural dimension (y), k-stratified fold, k components),
-get best components (scale, PCA, RFE to training data only) and assign to 
-4D matrix (bkc_mat): kstrat folds * components * best k component sets * behavioural dimensions
+oc_select_components.py
+Cross-validated PCA + RFE component selection for a given DNN layer
 """
+
 import numpy as np
 import os
 import time
@@ -72,7 +70,7 @@ n_item = len(dim_vals)
 n_exemp = int(len(feats) / n_item)
 n_fold = k_fold
 
-# k strat cv
+# K strat cv
 cv_idx = kstrat_cv_split(n_exemp, n_item, n_fold)
 
 # Make output matrix and headers
@@ -128,5 +126,5 @@ data_object = DataObject(
     mod_fit_perm_mat_adj_r2=None,
 )
 
-out_name = "kstrat_%s_object_%s_%s.pkl" % (k_fold, model_name, feat_name)
+out_name = "data_object_%s_%s.pkl" % (model_name, feat_name)
 save_data_object(data_object, out_path + out_name)

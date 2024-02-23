@@ -1,6 +1,8 @@
-"""kstrat_best_k_model_fit_vis_extra.py
-For each proxy dimension, plot bars 
 """
+oc_plot_bars_extra.py
+Plot bar charts (x/bars: dimensions, y: model fit)
+"""
+
 import os
 from functions.functions import (
     PlotObject,
@@ -12,7 +14,7 @@ from functions.functions import (
 )
 
 # --- User input
-extra_object_name = "kstrat_10_object_clip-vit_extra.pkl"
+extra_object_name = "data_object_clip-vit_extra.pkl"
 
 main_path = os.path.dirname(os.path.abspath(__file__))
 extra_object_path = os.path.join(main_path, "results", extra_object_name)
@@ -20,11 +22,11 @@ extra_proxy_path = os.path.join(main_path, "data/extra/", "extra_proxy_dimension
 dim_data = os.path.join(
     main_path, "data/behavioural_dimensions/", "selected_dimensions.csv"
 )
-out_path = os.path.join(main_path, "results/best_k_model_fit_figs/")
+out_path = os.path.join(main_path, "results/bar_plots/")
 
-mod_fit_metric = "r2"  # "adj_r2"
+mod_fit_metric = "r2"
 
-fig_label = "C)"
+fig_label = ""
 
 show_perm = 1
 
@@ -73,7 +75,6 @@ if show_perm == 1:
         out_path=out_path,
         fig_label=fig_label,
     )
-    # FIX
     best_k_bar_plot_extra_perm(plot_object, model_name_dict, plot_best_k)
 
 
@@ -89,5 +90,4 @@ else:
         out_path=out_path,
         fig_label=fig_label,
     )
-    # FIX
     best_k_bar_plot_extra(plot_object, model_name_dict, plot_best_k)

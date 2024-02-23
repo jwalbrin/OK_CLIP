@@ -1,11 +1,8 @@
 """ 
-kstrat_regression_predict_extra.py
-Generate k-stratified CV predictions for
-20 extra object images (10 exemplars each) and assign as a matrix 
-(pred_mat) to input data_object pred_mat.shape: 
-n_fold_tr * (n_fold_te * 20 extra objects) best_k_sizes * proxy_dims
-(e.g. 10 * (10 * 20) * 7 * 3)
+oc_predictions_extra.py
+Generate cross-validated predictions (for each dimension, component set)
 """
+
 import numpy as np
 import os
 import time
@@ -25,7 +22,7 @@ from functions.functions import (
 )
 
 # --- User input
-data_object_name = "kstrat_10_object_clip-vit_eighty_tools.pkl"
+data_object_name = "data_object_clip-vit_eighty_tools.pkl"
 
 main_path = os.path.dirname(os.path.abspath(__file__))
 out_path = os.path.join(main_path, "results/")
@@ -118,5 +115,5 @@ extra_object = DataObject(
     mod_fit_perm_mat_adj_r2=None,
 )
 save_data_object(
-    extra_object, out_path + f"kstrat_object_{data_object.model_name}_extra.pkl"
+    extra_object, out_path + f"data_object_{data_object.model_name}_extra.pkl"
 )

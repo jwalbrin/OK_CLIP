@@ -1,7 +1,8 @@
-"""kstrat_best_k_model_fit_vis_things.py
-For each dimension, best k components, 
-plot bars
 """
+oc_plot_bars_things.py
+Plot bar charts (x/bars: dimensions, y: model fit)
+"""
+
 import os
 from functions.functions import (
     PlotObject,
@@ -14,8 +15,8 @@ from functions.functions import (
 )
 
 # --- User input
-et_object_name = "kstrat_10_object_clip-vit_eighty_tools.pkl"
-things_object_name = "kstrat_10_object_clip-vit_things.pkl"
+et_object_name = "data_object_clip-vit_eighty_tools.pkl"
+things_object_name = "data_object_clip-vit_things.pkl"
 
 main_path = os.path.dirname(os.path.abspath(__file__))
 et_object_path = os.path.join(main_path, "results", et_object_name)
@@ -24,11 +25,11 @@ things_idx_path = os.path.join(main_path, "data/things/", "things_images_idx.csv
 dim_data = os.path.join(
     main_path, "data/behavioural_dimensions/", "selected_dimensions.csv"
 )
-out_path = os.path.join(main_path, "results/best_k_model_fit_figs/")
+out_path = os.path.join(main_path, "results/bar_plots/")
 
-mod_fit_metric = "r2"  # "adj_r2"
+mod_fit_metric = "r2"
 
-fig_label = "B)"
+fig_label = ""
 
 show_perm = 1
 

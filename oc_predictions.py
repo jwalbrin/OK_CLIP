@@ -1,10 +1,8 @@
 """ 
-kstrat_regression_predict.py
-Generate k-stratified CV predictions
-and assign as a matrix (pred_mat) to input data_object
-pred_mat.shape: 80 item * n_fold * best_k_sizes * targ_dims
-(e.g. 80 * 10 * 7 * 15)
+oc_predictions.py
+Generate cross-validated predictions (for each dimension, component set)
 """
+
 import numpy as np
 import os
 import time
@@ -21,7 +19,7 @@ from functions.functions import (
 )
 
 # --- User input
-data_object_name = "kstrat_5_object_clip-vit_eighty_tools.pkl"
+data_object_name = "data_object_clip-vit_eighty_tools.pkl"
 
 main_path = os.path.dirname(os.path.abspath(__file__))
 data_object_path = os.path.join(main_path, "results", data_object_name)

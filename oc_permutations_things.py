@@ -1,9 +1,6 @@
 """ 
-kstrat_regression_permutations_things.py
-Model fit exemplar-set-wise predictions with n_permuted
-dimension(s). Returns mod_fit_perm_mat of size:
-n folds * best k sizes * dimensions * ...
-(n permutations + 1 un-permuted test score)
+oc_permutations_things.py
+Permutations (model fits with shuffled dimensions)
 """
 
 import os
@@ -17,7 +14,7 @@ from functions.functions import (
 )
 
 # --- User input
-things_object_name = "kstrat_10_object_clip-vit_things.pkl"
+things_object_name = "data_object_clip-vit_things.pkl"
 
 main_path = os.path.dirname(os.path.abspath(__file__))
 things_object_path = os.path.join(main_path, "results", things_object_name)

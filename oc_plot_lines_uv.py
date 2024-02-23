@@ -1,10 +1,6 @@
-"""kstrat_incremental_model_fit_vis_uniq_var.py
-Load ab_predictions along with each respective
-a,b prediction and calculte the unique variance
-explained by each a and b
-Plots both for a and b as line charts
-where x is best k components, 
-y is unique variance explained
+"""
+oc_plot_lines_uv.py
+Plot line charts (x: component set, y: uniq. var. explained, lines: dimensions)
 """
 
 import os
@@ -21,25 +17,19 @@ from functions.functions import (
 )
 
 # --- User input
-pair_object_name = "kstrat_10_ab_predictions.pkl"
+pair_object_name = "ab_predictions.pkl"
 ab_names = ["clip-vit", "in21k-vit"]  # must match order of pair in pair_object
-ab_names = ["clip-vit", "in1k-resnext101"]  # must match order of pair in pair_object
-ab_names = ["clip-vit", "in1k-vgg16"]  # must match order of pair in pair_object
-ab_names = ["clip-vit", "in1k-alexnet"]  # must match order of pair in pair_object
-
 
 main_path = os.path.dirname(os.path.abspath(__file__))
 pair_object_path = os.path.join(main_path, "results", pair_object_name)
 dim_data = os.path.join(
     main_path, "data/behavioural_dimensions/", "selected_dimensions.csv"
 )
-out_path = os.path.join(
-    main_path, "results/incremental_model_fit_unique_variance_figs/"
-)
+out_path = os.path.join(main_path, "results/line_plots_uv/")
 
-mod_fit_metric = "r2"  # "adj_r2"
+mod_fit_metric = "r2"
 
-fig_label = "D)"
+fig_label = ""
 
 model_name_dict = {
     "clip-vit": "CLIP-ViT",

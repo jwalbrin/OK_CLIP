@@ -1,20 +1,20 @@
-"""kstrat_incremental_model_fit_vis.py
-For each dimensions, set of best k components, 
-plot model fits as line charts 
 """
-import os
+oc_plot_bars.py
+Plot bar charts (x/bars: dimensions, y: model fit)
+"""
 
+import os
 from functions.functions import (
     PlotObject,
     load_data_object,
     prep_dim_data,
     kstrat_mod_fit_lio,
-    kstrat_incremental_lineplot,
-    kstrat_incremental_lineplot_with_perm,
+    kstrat_best_k_bar_plot,
+    kstrat_best_k_bar_plot_perm,
 )
 
 # --- User input
-data_object_name = "kstrat_10_object_clip-vit_eighty_tools.pkl"
+data_object_name = "data_object_clip-vit_eighty_tools.pkl"
 
 main_path = os.path.dirname(os.path.abspath(__file__))
 data_object_path = os.path.join(main_path, "results", data_object_name)
@@ -22,13 +22,15 @@ data_object_path = os.path.join(main_path, "results", data_object_name)
 dim_data = os.path.join(
     main_path, "data/behavioural_dimensions/", "selected_dimensions.csv"
 )
-out_path = os.path.join(main_path, "results/incremental_model_fit_figs/")
+out_path = os.path.join(main_path, "results/bar_plots/")
 
-mod_fit_metric = "adj_r2"  # "adj_r2"
+mod_fit_metric = "r2"
 
-fig_label = "A)"
+fig_label = ""
 
 show_perm = 1
+
+plot_best_k = 10
 
 model_name_dict = {
     "clip-vit": "CLIP-ViT",
@@ -44,8 +46,10 @@ model_name_dict = {
 if not os.path.exists(out_path):
     os.makedirs(out_path)
 
-# Load data object, prep dims
+# Load data object
 data_object = load_data_object(data_object_path)
+
+# Prepare dimensions
 dim_vals, _ = prep_dim_data(dim_data, data_object.dim_names)
 
 # Calculate model fits
@@ -71,7 +75,8 @@ if show_perm == 1:
         fig_label=fig_label,
     )
 
-    kstrat_incremental_lineplot_with_perm(plot_object, model_name_dict)
+    kstrat_best_k_bar_plot_perm(plot_object, model_name_dict, plot_best_k)
+
 else:
     # Instantiate PlotObject
     plot_object = PlotObject(
@@ -85,4 +90,4 @@ else:
         fig_label=fig_label,
     )
 
-    kstrat_incremental_lineplot(plot_object, model_name_dict)
+    kstrat_best_k_bar_plot(plot_object, model_name_dict, plot_best_k)

@@ -1,8 +1,7 @@
-"""lio_incremental_uniq_var_predict.py
-For each pair of data_objects in list of tuples 
-e.g [(data_object_a, data_object_b), ...]
-calculates the best k components predictions from 
-the merging of features of each pair in pred_mats"""
+"""
+oc_predictions_uv.py
+Generate cross-validated predictions (for each dimension, component set)
+"""
 
 import numpy as np
 import os
@@ -22,28 +21,28 @@ from functions.functions import (
 # --- User input
 data_object_pairs = [
     (
-        "kstrat_10_object_clip-vit_eighty_tools.pkl",
-        "kstrat_10_object_in21k-vit_eighty_tools.pkl",
+        "data_object_clip-vit_eighty_tools.pkl",
+        "data_object_in21k-vit_eighty_tools.pkl",
     ),
     (
-        "kstrat_10_object_clip-vit_eighty_tools.pkl",
-        "kstrat_10_object_in1k-resnext101_eighty_tools.pkl",
+        "data_object_clip-vit_eighty_tools.pkl",
+        "data_object_in1k-resnext101_eighty_tools.pkl",
     ),
     (
-        "kstrat_10_object_clip-vit_eighty_tools.pkl",
-        "kstrat_10_object_in1k-vgg16_eighty_tools.pkl",
+        "data_object_clip-vit_eighty_tools.pkl",
+        "data_object_in1k-vgg16_eighty_tools.pkl",
     ),
     (
-        "kstrat_10_object_clip-vit_eighty_tools.pkl",
-        "kstrat_10_object_in1k-alexnet_eighty_tools.pkl",
+        "data_object_clip-vit_eighty_tools.pkl",
+        "data_object_in1k-alexnet_eighty_tools.pkl",
     ),
     (
-        "kstrat_10_object_clip-vit_eighty_tools.pkl",
-        "kstrat_10_object_ecoset-vgg16_eighty_tools.pkl",
+        "data_object_clip-vit_eighty_tools.pkl",
+        "data_object_ecoset-vgg16_eighty_tools.pkl",
     ),
     (
-        "kstrat_10_object_clip-vit_eighty_tools.pkl",
-        "kstrat_10_object_ecoset-alexnet_eighty_tools.pkl",
+        "data_object_clip-vit_eighty_tools.pkl",
+        "data_object_ecoset-alexnet_eighty_tools.pkl",
     ),
 ]
 
@@ -152,4 +151,4 @@ for abp_idx, abp in enumerate(data_object_pairs):
 
     pair_object.pred_mats[abp_idx] = pred_mat
 
-save_data_object(pair_object, out_path + "kstrat_ab_predictions.pkl")
+save_data_object(pair_object, out_path + "ab_predictions.pkl")
