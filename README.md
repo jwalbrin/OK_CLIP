@@ -6,7 +6,7 @@ Data and analysis code for the forthcoming manuscript:
 
 By Jon Walbrin, Nikita Sossounov, Morteza Mahdiani, Igor Vaz, & Jorge Almeida
 
-<img src="https://github.com/jwalbrin/OK_CLIP/blob/main/results_fig.png?raw=true" alt="GitHub Logo" width="640"/>
+<img src="https://github.com/jwalbrin/OK_CLIP/blob/main/results_fig.png?raw=true" alt="GitHub Logo" width="800"/>
 
 ### Repo structure
 
