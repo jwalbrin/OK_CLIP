@@ -75,7 +75,7 @@ if show_perm == 1:
         out_path=out_path,
         fig_label=fig_label,
     )
-    best_k_bar_plot_extra_perm(plot_object, model_name_dict, plot_best_k)
+    best_k_bar_plot_extra_perm(plot_object, plot_best_k)
 
 
 else:
@@ -90,4 +90,4 @@ else:
         out_path=out_path,
         fig_label=fig_label,
     )
-    best_k_bar_plot_extra(plot_object, model_name_dict, plot_best_k)
+    best_k_bar_plot_extra(plot_object, plot_best_k)

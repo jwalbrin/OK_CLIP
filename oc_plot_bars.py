@@ -75,7 +75,7 @@ if show_perm == 1:
         fig_label=fig_label,
     )
 
-    kstrat_best_k_bar_plot_perm(plot_object, model_name_dict, plot_best_k)
+    kstrat_best_k_bar_plot_perm(plot_object, plot_best_k)
 
 else:
     # Instantiate PlotObject
@@ -90,4 +90,4 @@ else:
         fig_label=fig_label,
     )
 
-    kstrat_best_k_bar_plot(plot_object, model_name_dict, plot_best_k)
+    kstrat_best_k_bar_plot(plot_object, plot_best_k)
