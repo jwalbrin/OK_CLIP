@@ -694,6 +694,31 @@ def line_plot(plot_object, model_name_dict):
     plt.savefig(out_path + f"{model_name}_{mod_fit_metric}_model_fit_lines.png")
 
 
+def perm_p_row_above_zero(perm_mat_row):
+    """Calculate permutation p per each best_k_component set,
+    set test scores < 0 to p_val = 1"""
+    p_val = 1 - ((np.sum(perm_mat_row[0] >= perm_mat_row) - 1) / (len(perm_mat_row)))
+    if perm_mat_row[0] <= 0:
+        p_val = 1
+    return p_val
+
+
+def perm_p_masks(p_vals):
+    """Mask p-vals that are below threshold
+    .001 and .05 respectively"""
+    p_mask_001 = p_vals <= 0.001
+    p_mask_05 = (p_vals <= 0.05) & ~p_mask_001
+    return p_mask_001, p_mask_05
+
+
+def perm_p_masks_extra(p_vals):
+    """Mask p-vals that are below threshold
+    .001 and .01 respectively"""
+    p_mask_001 = p_vals <= 0.001
+    p_mask_01 = (p_vals <= 0.01) & ~p_mask_001
+    return p_mask_001, p_mask_01
+
+
 def line_plot_perm(plot_object, model_name_dict):
     """Line plot subplots (one per knowledge type)
     where x = best_k_components, y = exemplar-averaged model fits
