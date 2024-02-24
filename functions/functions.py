@@ -256,7 +256,7 @@ def get_cv_idx_things_te(n_exemp, n_item_te):
     return cv_idx_te
 
 
-def kstrat_orig_things_prep_tr_te_feats(
+def et_things_prep_tr_te_feats(
     train_feats, test_feats, cv_idx_tr, cv_idx_te, fold_tr, fold_te, n_comp
 ):
     """Prepare features for train (eighty tools) and
@@ -307,7 +307,7 @@ def get_cv_idx_things_te(n_exemp, n_item_te):
     return cv_idx_te
 
 
-def orig_extra_prep_tr_feats(train_feats, test_feats, cv_idx_tr, n_comp, fold):
+def et_extra_prep_tr_feats(train_feats, test_feats, cv_idx_tr, n_comp, fold):
     """Prepare feats for eighty tools and extra data.
     Fold-wise eighty tool samples are used as training,
     all extra features are used for testing"""
@@ -328,9 +328,7 @@ def orig_extra_prep_tr_feats(train_feats, test_feats, cv_idx_tr, n_comp, fold):
     return feats_tr, feats_te
 
 
-def kstrat_mod_fit_lio_perm(
-    pred_mat, dim_vals, best_k_sizes, targ_dims, n_perm, eval_func
-):
+def mod_fit_perm(pred_mat, dim_vals, best_k_sizes, targ_dims, n_perm, eval_func):
     """Model fit exemplar-set-wise predictions with n permuted
     dimension(s)"""
 
@@ -390,9 +388,7 @@ def kstrat_mod_fit_lio_perm(
     return mod_fit_perm_mat
 
 
-def kstrat_mod_fit_lio_things_perm(
-    pred_mat, dim_vals, best_k_sizes, targ_dims, n_perm, eval_func
-):
+def mod_fit_things_perm(pred_mat, dim_vals, best_k_sizes, targ_dims, n_perm, eval_func):
     """Model fit exemplar-set-wise predictions with n permuted
     dimension(s)"""
 
@@ -456,7 +452,7 @@ def kstrat_mod_fit_lio_things_perm(
     return mod_fit_perm_mat
 
 
-def kstrat_mod_fit_lio_extra_perm(
+def mod_fit_extra_perm(
     pred_mat, proxy_vals, best_k_sizes, targ_dims, n_perm, eval_func, n_exemp
 ):
     """Model fit exemplar-set-wise predictions with n permuted
@@ -522,7 +518,7 @@ def kstrat_mod_fit_lio_extra_perm(
     return mod_fit_perm_mat
 
 
-def kstrat_mod_fit_lio(pred_mat, dim_vals, best_k_sizes, eval_func):
+def mod_fit(pred_mat, dim_vals, best_k_sizes, eval_func):
     """Model fit exemplar-set-wise predictions with dimension(s)"""
 
     def get_eval_score_func(eval_func):
@@ -559,7 +555,7 @@ def kstrat_mod_fit_lio(pred_mat, dim_vals, best_k_sizes, eval_func):
     return mod_fit_mat
 
 
-def kstrat_incremental_lineplot(plot_object, model_name_dict):
+def line_plot(plot_object, model_name_dict):
     """Line plot subplots (one per knowledge type)
     where x = best_k_components, y = exemplar-averaged model fits"""
 
@@ -698,7 +694,7 @@ def kstrat_incremental_lineplot(plot_object, model_name_dict):
     plt.savefig(out_path + f"{model_name}_{mod_fit_metric}_model_fit_lines.png")
 
 
-def kstrat_incremental_lineplot_with_perm(plot_object, model_name_dict):
+def line_plot_perm(plot_object, model_name_dict):
     """Line plot subplots (one per knowledge type)
     where x = best_k_components, y = exemplar-averaged model fits
     along with permutation significance"""
@@ -918,9 +914,7 @@ def get_ab_pair_idx(ab_names, pair_object_paths):
         raise ValueError("ab_names are not a valid pair in pair_object")
 
 
-def kstrat_incremental_lineplot_unique_variance_together(
-    plot_object_a, plot_object_b, model_name_dict
-):
+def line_plot_uv(plot_object_a, plot_object_b, model_name_dict):
     """Line plot subplots (one per knowledge type)
     where x = best_k_components, y = exemplar-averaged unique
     variance explained
@@ -1088,9 +1082,7 @@ def kstrat_incremental_lineplot_unique_variance_together(
     )
 
 
-def kstrat_incremental_lineplot_unique_variance_together_rescale(
-    plot_object_a, plot_object_b, model_name_dict
-):
+def line_plot_uv_rescale(plot_object_a, plot_object_b, model_name_dict):
     """Line plot subplots (one per knowledge type)
     where x = best_k_components, y = exemplar-averaged unique
     variance explained
@@ -1270,7 +1262,7 @@ def kstrat_incremental_lineplot_unique_variance_together_rescale(
     )
 
 
-def kstrat_best_k_bar_plot(plot_object, plot_best_k):
+def bar_plot(plot_object, plot_best_k):
     """Plot bar subplots for each dimension,
     for best k components"""
 
@@ -1367,7 +1359,7 @@ def kstrat_best_k_bar_plot(plot_object, plot_best_k):
     )
 
 
-def kstrat_best_k_bar_plot_perm(plot_object, plot_best_k):
+def bar_plot_perm(plot_object, plot_best_k):
     """Plot bar subplots for each dimension,
     for best k components, with permutations"""
 
@@ -1495,7 +1487,7 @@ def kstrat_best_k_bar_plot_perm(plot_object, plot_best_k):
     )
 
 
-def kstrat_mod_fit_lio_things(pred_mat, dim_vals, best_k_sizes, eval_func):
+def mod_fit_things(pred_mat, dim_vals, best_k_sizes, eval_func):
     """Model fit exemplar-set-wise predictions with dimension(s)"""
 
     def get_eval_score_func(eval_func):
@@ -1534,7 +1526,7 @@ def kstrat_mod_fit_lio_things(pred_mat, dim_vals, best_k_sizes, eval_func):
     return mod_fit_mat
 
 
-def kstrat_best_k_bar_plot_things(plot_object, plot_best_k):
+def bar_plot_things(plot_object, plot_best_k):
     """Plots bar subplots for each dimension for a
     given best k components"""
 
@@ -1631,7 +1623,7 @@ def kstrat_best_k_bar_plot_things(plot_object, plot_best_k):
     )
 
 
-def kstrat_best_k_bar_plot_things_perm(plot_object, plot_best_k):
+def bar_plot_things_perm(plot_object, plot_best_k):
     """Plots bar subplots for each dimension for a
     given best k components"""
 
@@ -1759,7 +1751,7 @@ def kstrat_best_k_bar_plot_things_perm(plot_object, plot_best_k):
     )
 
 
-def mod_fit_lio_extra(pred_mat, dim_vals, best_k_sizes, eval_func, n_exemp):
+def mod_fit_extra(pred_mat, dim_vals, best_k_sizes, eval_func, n_exemp):
     """Model fit fold-wise predictions with dimension(s)"""
 
     def get_eval_score_func(eval_func):
@@ -1803,7 +1795,7 @@ def mod_fit_lio_extra(pred_mat, dim_vals, best_k_sizes, eval_func, n_exemp):
     return mod_fit_mat
 
 
-def best_k_bar_plot_extra_perm(plot_object, plot_best_k):
+def bar_plot_extra_perm(plot_object, plot_best_k):
     """Plots bar subplots for each dimension for a
     given best k components"""
 
@@ -1908,7 +1900,7 @@ def best_k_bar_plot_extra_perm(plot_object, plot_best_k):
     )
 
 
-def best_k_bar_plot_extra(plot_object, plot_best_k):
+def bar_plot_extra(plot_object, plot_best_k):
     """Bar subplots for each dimension,
     for best k components"""
 

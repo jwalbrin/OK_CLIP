@@ -11,9 +11,9 @@ from functions.functions import (
     get_ab_pair_idx,
     unpack_ab_variables,
     prep_dim_data,
-    kstrat_mod_fit_lio,
-    kstrat_incremental_lineplot_unique_variance_together,
-    kstrat_incremental_lineplot_unique_variance_together_rescale,
+    mod_fit,
+    line_plot_uv,
+    line_plot_uv_rescale,
 )
 
 # --- User input
@@ -59,21 +59,17 @@ targ_dims, n_comp, n_item, n_exemp, n_fold, best_k_sizes = unpack_ab_variables(
 dim_vals, _ = prep_dim_data(dim_data, targ_dims)
 
 # Calculate model fits for ab pair
-mod_fit_mat_ab = kstrat_mod_fit_lio(
+mod_fit_mat_ab = mod_fit(
     pair_object.pred_mats[p_idx], dim_vals, best_k_sizes, mod_fit_metric
 )
 
 # Calculate model fits for a
 data_object = load_data_object(pair_object.object_paths[p_idx][0])
-mod_fit_mat_a = kstrat_mod_fit_lio(
-    data_object.pred_mat, dim_vals, best_k_sizes, mod_fit_metric
-)
+mod_fit_mat_a = mod_fit(data_object.pred_mat, dim_vals, best_k_sizes, mod_fit_metric)
 
 # Calculate model fits for b
 data_object = load_data_object(pair_object.object_paths[p_idx][1])
-mod_fit_mat_b = kstrat_mod_fit_lio(
-    data_object.pred_mat, dim_vals, best_k_sizes, mod_fit_metric
-)
+mod_fit_mat_b = mod_fit(data_object.pred_mat, dim_vals, best_k_sizes, mod_fit_metric)
 
 # Delete data_object
 del data_object
@@ -109,10 +105,6 @@ plot_object_b = PlotObject(
 if any([True if "alexnet" in i else False for i in ab_names]) or any(
     [True if "ecoset-vgg16" in i else False for i in ab_names]
 ):
-    kstrat_incremental_lineplot_unique_variance_together_rescale(
-        plot_object_a, plot_object_b, model_name_dict
-    )
+    line_plot_uv_rescale(plot_object_a, plot_object_b, model_name_dict)
 else:
-    kstrat_incremental_lineplot_unique_variance_together(
-        plot_object_a, plot_object_b, model_name_dict
-    )
+    line_plot_uv(plot_object_a, plot_object_b, model_name_dict)

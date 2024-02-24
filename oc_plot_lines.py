@@ -9,9 +9,9 @@ from functions.functions import (
     PlotObject,
     load_data_object,
     prep_dim_data,
-    kstrat_mod_fit_lio,
-    kstrat_incremental_lineplot,
-    kstrat_incremental_lineplot_with_perm,
+    mod_fit,
+    line_plot,
+    line_plot_perm,
 )
 
 # --- User input
@@ -50,7 +50,7 @@ data_object = load_data_object(data_object_path)
 dim_vals, _ = prep_dim_data(dim_data, data_object.dim_names)
 
 # Calculate model fits
-mod_fit_mat = kstrat_mod_fit_lio(
+mod_fit_mat = mod_fit(
     data_object.pred_mat, dim_vals, data_object.bkc_sizes, mod_fit_metric
 )
 
@@ -72,7 +72,7 @@ if show_perm == 1:
         fig_label=fig_label,
     )
 
-    kstrat_incremental_lineplot_with_perm(plot_object, model_name_dict)
+    line_plot_perm(plot_object, model_name_dict)
 else:
     # Instantiate PlotObject
     plot_object = PlotObject(
@@ -86,4 +86,4 @@ else:
         fig_label=fig_label,
     )
 
-    kstrat_incremental_lineplot(plot_object, model_name_dict)
+    line_plot(plot_object, model_name_dict)

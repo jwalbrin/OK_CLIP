@@ -14,7 +14,7 @@ from functions.functions import (
     load_things_idx,
     prep_dim_data,
     get_cv_idx_things_te,
-    kstrat_orig_things_prep_tr_te_feats,
+    et_things_prep_tr_te_feats,
     get_bkc_idx,
     repeat_exemplars_y,
     save_data_object,
@@ -79,7 +79,7 @@ for td_idx, td in enumerate(targ_dims_flat):
 
             for te_f in np.arange(n_fold_te):
                 # Prepare train and test X
-                train_X, test_X = kstrat_orig_things_prep_tr_te_feats(
+                train_X, test_X = et_things_prep_tr_te_feats(
                     train_feats, test_feats, cv_idx_tr, cv_idx_te, tr_f, te_f, n_comp
                 )
 

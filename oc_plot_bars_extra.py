@@ -8,9 +8,9 @@ from functions.functions import (
     PlotObject,
     load_data_object,
     load_proxy_data,
-    mod_fit_lio_extra,
-    best_k_bar_plot_extra,
-    best_k_bar_plot_extra_perm,
+    mod_fit_extra,
+    bar_plot_extra,
+    bar_plot_extra_perm,
 )
 
 # --- User input
@@ -54,7 +54,7 @@ proxy_vals, proxy_names = load_proxy_data(extra_proxy_path)
 
 # Calculate model fits
 n_exemp = extra_object.n_exemp
-mod_fit_mat = mod_fit_lio_extra(
+mod_fit_mat = mod_fit_extra(
     extra_object.pred_mat, proxy_vals, extra_object.bkc_sizes, mod_fit_metric, n_exemp
 )
 
@@ -75,7 +75,7 @@ if show_perm == 1:
         out_path=out_path,
         fig_label=fig_label,
     )
-    best_k_bar_plot_extra_perm(plot_object, plot_best_k)
+    bar_plot_extra_perm(plot_object, plot_best_k)
 
 
 else:
@@ -90,4 +90,4 @@ else:
         out_path=out_path,
         fig_label=fig_label,
     )
-    best_k_bar_plot_extra(plot_object, plot_best_k)
+    bar_plot_extra(plot_object, plot_best_k)

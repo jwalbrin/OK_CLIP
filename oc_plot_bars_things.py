@@ -9,9 +9,9 @@ from functions.functions import (
     load_data_object,
     load_things_idx,
     prep_dim_data,
-    kstrat_mod_fit_lio_things,
-    kstrat_best_k_bar_plot_things,
-    kstrat_best_k_bar_plot_things_perm,
+    mod_fit_things,
+    bar_plot_things,
+    bar_plot_things_perm,
 )
 
 # --- User input
@@ -61,7 +61,7 @@ dim_vals, _ = prep_dim_data(dim_data, et_object.dim_names)
 dim_vals = dim_vals[things_idx, :]
 
 # Calculate model fits
-mod_fit_mat = kstrat_mod_fit_lio_things(
+mod_fit_mat = mod_fit_things(
     things_object.pred_mat, dim_vals, things_object.bkc_sizes, mod_fit_metric
 )
 
@@ -83,7 +83,7 @@ if show_perm == 1:
         fig_label=fig_label,
     )
 
-    kstrat_best_k_bar_plot_things_perm(plot_object, plot_best_k)
+    bar_plot_things_perm(plot_object, plot_best_k)
 
 
 else:
@@ -99,4 +99,4 @@ else:
         fig_label=fig_label,
     )
 
-    kstrat_best_k_bar_plot_things(plot_object, plot_best_k)
+    bar_plot_things(plot_object, plot_best_k)

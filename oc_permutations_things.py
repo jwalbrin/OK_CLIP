@@ -9,7 +9,7 @@ from functions.functions import (
     load_data_object,
     load_things_idx,
     prep_dim_data,
-    kstrat_mod_fit_lio_things_perm,
+    mod_fit_things_perm,
     save_data_object,
 )
 
@@ -49,7 +49,7 @@ best_k_sizes = things_object.bkc_sizes
 
 # Calculate permuted dimension fits
 for met_idx, met in enumerate(mod_fit_metrics):
-    mod_fit_perm_mat = kstrat_mod_fit_lio_things_perm(
+    mod_fit_perm_mat = mod_fit_things_perm(
         things_object.pred_mat,
         dim_vals,
         things_object.bkc_sizes,

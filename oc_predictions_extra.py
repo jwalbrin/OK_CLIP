@@ -15,7 +15,7 @@ from functions.functions import (
     prep_dim_data,
     subset_dims_in_proxy,
     get_cv_idx_tr,
-    orig_extra_prep_tr_feats,
+    et_extra_prep_tr_feats,
     get_bkc_idx,
     repeat_exemplars_y,
     save_data_object,
@@ -77,7 +77,7 @@ for td_idx, td in enumerate(dim_names):
             bkc_idx = get_bkc_idx(data_object.bkc_mat, f, bks_idx, dim_orig_idx[td_idx])
 
             # Prepare train and test X
-            train_X, test_X = orig_extra_prep_tr_feats(
+            train_X, test_X = et_extra_prep_tr_feats(
                 train_feats, test_feats, cv_idx_tr, n_comp, f
             )
 

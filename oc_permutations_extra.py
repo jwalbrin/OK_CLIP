@@ -8,7 +8,7 @@ import os
 from functions.functions import (
     load_data_object,
     load_proxy_data,
-    kstrat_mod_fit_lio_extra_perm,
+    mod_fit_extra_perm,
     save_data_object,
 )
 
@@ -43,7 +43,7 @@ best_k_sizes = extra_object.bkc_sizes
 
 # Calculate permuted dimension fits
 for met_idx, met in enumerate(mod_fit_metrics):
-    mod_fit_perm_mat = kstrat_mod_fit_lio_extra_perm(
+    mod_fit_perm_mat = mod_fit_extra_perm(
         extra_object.pred_mat,
         proxy_vals,
         extra_object.bkc_sizes,
