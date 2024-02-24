@@ -35,7 +35,7 @@ class DataObject:
 
 @dataclass
 class PlotObject:
-    """Object for incremenetal best k plots"""
+    """Object for plotting"""
 
     model_name: str
     dim_names: list[list]
@@ -56,9 +56,6 @@ class PairObject:
     variables: list[dict]
 
 
-model_dict = {"clip-vit": "CLIP-VIT", "in21k-vit": "IN21K-ViT"}
-
-
 def save_data_object(obj, filename):
     with open(filename, "wb") as file:
         pickle.dump(obj, file)
@@ -69,25 +66,26 @@ def load_data_object(filename):
         return pickle.load(file)
 
 
+def load_dim_data(dim_data):
+    """Load dimension names and values"""
+    df = pd.read_csv(dim_data)
+    dim_names = list(df.columns[1:])
+    dim_vals = df.iloc[:, 1:].to_numpy()
+    return dim_names, dim_vals
+
+
+def reorder_dim_data(targ_dims, dim_names, dim_vals):
+    """Reorder dimension names and values based on target dimension
+    ordering"""
+    td_idx = [dim_names.index(i) for i in targ_dims]
+    dim_vals = np.stack(dim_vals[:, td_idx]).astype(None)
+    dim_names = [dim_names[i] for i in td_idx]
+    return dim_vals, dim_names
+
+
 def prep_dim_data(dim_data, targ_dims):
-    def load_dim_data(dim_data):
-        """Load dimension names and values"""
-        df = pd.read_csv(dim_data)
-        dim_names = list(df.columns[1:])
-        dim_vals = df.iloc[:, 1:].to_numpy()
-        return dim_names, dim_vals
+    """Load, reorder, scale dimensions"""
 
-    def reorder_dim_data(targ_dims, dim_names, dim_vals):
-        """Reorder dimension names and values based on target dimension
-        ordering"""
-        td_idx = [dim_names.index(i) for i in targ_dims]
-        dim_vals = np.stack(dim_vals[:, td_idx]).astype(
-            None
-        )  # convert to regular array
-        dim_names = [dim_names[i] for i in td_idx]
-        return dim_vals, dim_names
-
-    # Load, reorder, scale dimensions
     dim_names, dim_vals = load_dim_data(dim_data)
     targ_dims_flat = sum(targ_dims, [])
     dim_vals, dim_names = reorder_dim_data(targ_dims_flat, dim_names, dim_vals)
@@ -135,7 +133,7 @@ def pca_feats(feats, n_comp, custom_cv, fold):
 
 def repeat_exemplars_y(dim_col, n_exemp, train_idx, test_idx):
     """Get y values for given dimension for specified train
-    and test values, repeated by n exemplars"""
+    and test splits, repeated by n exemplars"""
     train_y = np.repeat(dim_col, n_exemp)[train_idx]
     test_y = np.repeat(dim_col, n_exemp)[test_idx]
     return train_y, test_y
@@ -171,13 +169,17 @@ def tr_te_split(feats, train_idx, test_idx):
 def pca_tr_te(train_X, test_X, n_comp):
     """Scale and PCA: fit with train_X,
     transform test_X for n components"""
-    sc = StandardScaler()
-    train_X = sc.fit_transform(train_X)
-    test_X = sc.transform(test_X)
 
-    pca = PCA(n_components=n_comp, svd_solver="full")
-    train_X = pca.fit_transform(train_X)
-    test_X = pca.transform(test_X)
+    pipe = Pipeline(
+        [
+            ("scaler", StandardScaler()),
+            ("pca", PCA(n_components=n_comp, svd_solver="full")),
+        ]
+    )
+
+    # Fit and transform
+    train_X = pipe.fit_transform(train_X)
+    test_X = pipe.transform(test_X)
     return train_X, test_X
 
 
@@ -380,7 +382,7 @@ def mod_fit_lio_extra(pred_mat, dim_vals, best_k_sizes, eval_func, n_exemp):
     eval_score = get_eval_score_func(eval_func)
 
     # Initialize
-    n_fold, n_preds, n_bks, n_targ_dims = pred_mat.shape
+    _, n_preds, n_bks, n_targ_dims = pred_mat.shape
     n_items = int(n_preds / n_exemp)
     mod_fit_mat = np.zeros((n_exemp, n_bks, n_targ_dims))
 
@@ -498,7 +500,7 @@ def kstrat_mod_fit_lio_perm(
     eval_score = get_eval_score_func(eval_func)
 
     # Initialize
-    n_pred, n_fold, n_bks, n_targ_dims = pred_mat.shape
+    _, n_fold, n_bks, n_targ_dims = pred_mat.shape
     mod_fit_perm_mat = np.zeros(
         (n_fold, n_bks, n_targ_dims, n_perm + 1), dtype=np.float16
     )
@@ -560,7 +562,7 @@ def kstrat_mod_fit_lio_things_perm(
     eval_score = get_eval_score_func(eval_func)
 
     # Initialize
-    n_fold_tr, n_fold_te, n_pred, n_bks, n_targ_dims = pred_mat.shape
+    n_fold_tr, n_fold_te, _, n_bks, n_targ_dims = pred_mat.shape
     mod_fit_perm_mat = np.zeros(
         (n_fold_tr, n_fold_te, n_bks, n_targ_dims, n_perm + 1), dtype=np.float16
     )
@@ -768,8 +770,7 @@ def kstrat_mod_fit_lio_extra_perm(
     eval_score = get_eval_score_func(eval_func)
 
     # Initialize
-    n_fold, n_preds, n_bks, n_targ_dims = pred_mat.shape
-    n_items = int(n_preds / n_exemp)
+    n_fold, _, n_bks, n_targ_dims = pred_mat.shape
     mod_fit_perm_mat = np.zeros(
         (n_fold, n_bks, n_targ_dims, n_perm + 1), dtype=np.float16
     )
@@ -946,7 +947,7 @@ def incremental_lineplot(plot_object, model_name_dict):
 
 
 def kstrat_incremental_lineplot(plot_object, model_name_dict):
-    """Creates linechart subplots (one per knowledge type)
+    """Line plot subplots (one per knowledge type)
     where x = best_k_components, y = exemplar-averaged model fits"""
 
     # Unpack plot_object variables
@@ -1081,9 +1082,7 @@ def kstrat_incremental_lineplot(plot_object, model_name_dict):
             markerfirst=False,
         )
 
-    plt.savefig(
-        out_path + f"{model_name}_{mod_fit_metric}_kstrat_model_fit_incremental.png"
-    )
+    plt.savefig(out_path + f"{model_name}_{mod_fit_metric}_model_fit_lines.png")
 
 
 def incremental_lineplot_unique_variance(plot_object, model_name_dict, ab_idx):
@@ -1347,10 +1346,10 @@ def kstrat_incremental_lineplot_unique_variance(plot_object, model_name_dict, ab
 def kstrat_incremental_lineplot_unique_variance_together(
     plot_object_a, plot_object_b, model_name_dict
 ):
-    """Creates linechart subplots (one per knowledge type)
+    """Line plot subplots (one per knowledge type)
     where x = best_k_components, y = exemplar-averaged unique
     variance explained
-    Plots both objects on the same plots (object be with dashed lines)"""
+    Plots both models on each plot"""
 
     # Unpack plot_object variables
     (
@@ -1510,17 +1509,17 @@ def kstrat_incremental_lineplot_unique_variance_together(
     plt.savefig(
         out_path
         + f"{model_name_dict[model_names[0]]}_>_{model_name_dict[model_names[1]]}"
-        + "_kstrat_unique_variance_model_fit_incremental_together.png"
+        + "_model_fit_lines_uv.png"
     )
 
 
 def kstrat_incremental_lineplot_unique_variance_together_rescale(
     plot_object_a, plot_object_b, model_name_dict
 ):
-    """Creates linechart subplots (one per knowledge type)
+    """Line plot subplots (one per knowledge type)
     where x = best_k_components, y = exemplar-averaged unique
     variance explained
-    Plots both objects on the same plots (object be with dashed lines)"""
+    Plots both models on each plot"""
 
     # Unpack plot_object variables
     (
@@ -1692,7 +1691,7 @@ def kstrat_incremental_lineplot_unique_variance_together_rescale(
     plt.savefig(
         out_path
         + f"{model_name_dict[model_names[0]]}_>_{model_name_dict[model_names[1]]}"
-        + "_kstrat_unique_variance_model_fit_incremental_together.png"
+        + "_model_fit_lines_uv.png"
     )
 
 
@@ -1852,9 +1851,9 @@ def incremental_lineplot_with_perm(plot_object, model_name_dict):
 
 
 def kstrat_incremental_lineplot_with_perm(plot_object, model_name_dict):
-    """Creates linechart subplots (one per knowledge type)
+    """Line plot subplots (one per knowledge type)
     where x = best_k_components, y = exemplar-averaged model fits
-    along with permutation significance indication"""
+    along with permutation significance"""
 
     # Unpack plot_object variables
     (
@@ -2023,10 +2022,7 @@ def kstrat_incremental_lineplot_with_perm(plot_object, model_name_dict):
             markerfirst=False,
         )
 
-    plt.savefig(
-        out_path
-        + f"{model_name}_{mod_fit_metric}_kstrat_model_fit_incremental_perm.png"
-    )
+    plt.savefig(out_path + f"{model_name}_{mod_fit_metric}_model_fit_lines_perm.png")
 
 
 def match_ab_get_attrs(data_object_a, data_object_b):
@@ -2038,7 +2034,8 @@ def match_ab_get_attrs(data_object_a, data_object_b):
         data_object_b (object): The second data object.
 
     Raises:
-        ValueError: If any of the key variables don't match in both `data_object_a` and `data_object_b`.
+        ValueError: If any of the key variables don't match in both
+        `data_object_a` and `data_object_b`.
     """
     attrs_a = vars(data_object_a)
     attrs_b = vars(data_object_b)
@@ -2068,7 +2065,7 @@ def prep_feats_ab(
     feats_a, feats_b, cv_idx, bkc_mat_a, bkc_mat_b, fold, bks_idx, td_idx, n_comp
 ):
     """
-    Prepare the features a and b models training and testing.
+    Prepare the features for models a and b.
 
     Args:
         bkc_mat_a (numpy.ndarray): The matrix of features for dataset A.
@@ -2120,11 +2117,15 @@ def unpack_ab_variables(pair_object, p_idx):
 
 def get_ab_pair_idx(ab_names, pair_object_paths):
     """
-    Get the index of the first pair in `pair_object_paths` that matches both elements in `ab_names`.
+    Get the index of the first pair in `pair_object_paths` that
+    matches both elements in `ab_names`.
 
     Parameters:
-        ab_names (List[str]): A list of two strings representing the names of the `a` and `b` elements.
-        pair_object_paths (List[Tuple[str, str]]): A list of tuples, where each tuple contains two strings representing the paths of the `a` and `b` elements.
+        ab_names (List[str]): A list of two strings representing
+        the names of the `a` and `b` elements.
+        pair_object_paths (List[Tuple[str, str]]): A list of tuples,
+        where each tuple contains two strings representing the paths
+        of the `a` and `b` elements.
 
     Returns:
         int: The index of the first pair that matches both elements in `ab_names`.
@@ -2156,6 +2157,7 @@ def load_things_idx(things_idx_path):
 
 
 def load_proxy_data(extra_proxy_path):
+    """Load behavioural proxy data, scale it"""
     proxy_vals = pd.read_csv(extra_proxy_path)
     proxy_names = list(proxy_vals.columns[1:])
     proxy_vals = np.array(proxy_vals[["V_DL_1", "M_DL_1", "F_DL_1"]])
@@ -2224,28 +2226,23 @@ def orig_things_prep_tr_te_feats(train_feats, test_feats, cv_idx, n_comp, fold):
 def kstrat_orig_things_prep_tr_te_feats(
     train_feats, test_feats, cv_idx_tr, cv_idx_te, fold_tr, fold_te, n_comp
 ):
+    """Prepare features for train (eighty tools) and
+    test (things) data"""
     # Subset train and test feats
     feats_tr = np.copy(train_feats)
     feats_te = np.copy(test_feats)
     feats_tr = feats_tr[cv_idx_tr[fold_tr], :]
     feats_te = feats_te[cv_idx_te[fold_te], :]
 
-    # Scale (cross-fit)
-    sc = StandardScaler()
-    feats_tr = sc.fit_transform(feats_tr)
-    feats_te = sc.transform(feats_te)
-
-    # PCA
-    pca = PCA(n_components=n_comp, svd_solver="full")
-    feats_tr = pca.fit_transform(feats_tr)
-    feats_te = pca.transform(feats_te)
+    # Scale and PCA
+    feats_tr, feats_te = pca_tr_te(feats_tr, feats_te, n_comp)
     return feats_tr, feats_te
 
 
 def orig_extra_prep_tr_feats(train_feats, test_feats, cv_idx_tr, n_comp, fold):
-    """Prepare feats for eighty tool snad extra data
-    fold-wise eighty tool samples are used as training,
-    while all extra features are used for testing"""
+    """Prepare feats for eighty tools and extra data.
+    Fold-wise eighty tool samples are used as training,
+    all extra features are used for testing"""
     # Subset train feats, get all test feats
     feats_tr = np.copy(train_feats)
     feats_te = np.copy(test_feats)
@@ -2360,9 +2357,9 @@ def best_k_bar_plot(plot_object, model_name_dict, plot_best_k):
     )
 
 
-def kstrat_best_k_bar_plot(plot_object, model_name_dict, plot_best_k):
-    """Plots bar subplots for each dimension for a
-    given best k components"""
+def kstrat_best_k_bar_plot(plot_object, plot_best_k):
+    """Plot bar subplots for each dimension,
+    for best k components"""
 
     # Unpack plot_object variables
     (
@@ -2453,7 +2450,7 @@ def kstrat_best_k_bar_plot(plot_object, model_name_dict, plot_best_k):
 
     plt.savefig(
         out_path
-        + f"{model_name}_{mod_fit_metric}_kstrat_model_fit_best_{plot_best_k}_components.png"
+        + f"{model_name}_{mod_fit_metric}_model_fit_bars_best_{plot_best_k}_components.png"
     )
 
 
@@ -2585,9 +2582,9 @@ def best_k_bar_plot_perm(plot_object, model_name_dict, plot_best_k):
     )
 
 
-def kstrat_best_k_bar_plot_perm(plot_object, model_name_dict, plot_best_k):
-    """Plots bar subplots for each dimension for a
-    given best k components"""
+def kstrat_best_k_bar_plot_perm(plot_object, plot_best_k):
+    """Plot bar subplots for each dimension,
+    for best k components, with permutations"""
 
     # Unpack plot_object variables
     (
@@ -2709,7 +2706,7 @@ def kstrat_best_k_bar_plot_perm(plot_object, model_name_dict, plot_best_k):
 
     plt.savefig(
         out_path
-        + f"{model_name}_{mod_fit_metric}_kstrat_model_fit_best_{plot_best_k}_components_perm.png"
+        + f"{model_name}_{mod_fit_metric}_model_fit_bars_best_{plot_best_k}_components_perm.png"
     )
 
 
@@ -2810,7 +2807,7 @@ def best_k_bar_plot_things(plot_object, model_name_dict, plot_best_k):
     )
 
 
-def kstrat_best_k_bar_plot_things(plot_object, model_name_dict, plot_best_k):
+def kstrat_best_k_bar_plot_things(plot_object, plot_best_k):
     """Plots bar subplots for each dimension for a
     given best k components"""
 
@@ -2903,7 +2900,7 @@ def kstrat_best_k_bar_plot_things(plot_object, model_name_dict, plot_best_k):
 
     plt.savefig(
         out_path
-        + f"{model_name}_{mod_fit_metric}_kstrat_model_fit_best_{plot_best_k}_components_things.png"
+        + f"{model_name}_{mod_fit_metric}_model_fit_bars_best_{plot_best_k}_components_things.png"
     )
 
 
@@ -3035,7 +3032,7 @@ def best_k_bar_plot_things_perm(plot_object, model_name_dict, plot_best_k):
     )
 
 
-def kstrat_best_k_bar_plot_things_perm(plot_object, model_name_dict, plot_best_k):
+def kstrat_best_k_bar_plot_things_perm(plot_object, plot_best_k):
     """Plots bar subplots for each dimension for a
     given best k components"""
 
@@ -3159,11 +3156,11 @@ def kstrat_best_k_bar_plot_things_perm(plot_object, model_name_dict, plot_best_k
 
     plt.savefig(
         out_path
-        + f"{model_name}_{mod_fit_metric}_kstrat_model_fit_best_{plot_best_k}_components_perm_things.png"
+        + f"{model_name}_{mod_fit_metric}_model_fit_bars_best_{plot_best_k}_components_things_perm.png"
     )
 
 
-def best_k_bar_plot_extra_perm(plot_object, model_name_dict, plot_best_k):
+def best_k_bar_plot_extra_perm(plot_object, plot_best_k):
     """Plots bar subplots for each dimension for a
     given best k components"""
 
@@ -3264,13 +3261,13 @@ def best_k_bar_plot_extra_perm(plot_object, model_name_dict, plot_best_k):
 
     plt.savefig(
         out_path
-        + f"{model_name}_{mod_fit_metric}_model_fit_best_{plot_best_k}_components_perm_extra.png"
+        + f"{model_name}_{mod_fit_metric}_model_fit_bars_best_{plot_best_k}_components_extra_perm.png"
     )
 
 
-def best_k_bar_plot_extra(plot_object, model_name_dict, plot_best_k):
-    """Plots bar subplots for each dimension for a
-    given best k components"""
+def best_k_bar_plot_extra(plot_object, plot_best_k):
+    """Bar subplots for each dimension,
+    for best k components"""
 
     # Unpack plot_object variables
     (
@@ -3278,7 +3275,7 @@ def best_k_bar_plot_extra(plot_object, model_name_dict, plot_best_k):
         targ_dims,
         mod_fit_metric,
         mod_fit_mat,
-        mod_fit_perm_mat,
+        _,
         best_k_sizes,
         out_path,
         fig_label,
@@ -3340,5 +3337,5 @@ def best_k_bar_plot_extra(plot_object, model_name_dict, plot_best_k):
 
     plt.savefig(
         out_path
-        + f"{model_name}_{mod_fit_metric}_model_fit_best_{plot_best_k}_components_extra.png"
+        + f"{model_name}_{mod_fit_metric}_model_fit_bars_best_{plot_best_k}_components_extra.png"
     )
